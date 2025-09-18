@@ -167,7 +167,7 @@
 <script>
 /* ===== drobné utily ===== */
 const qs=s=>document.querySelector(s);
-function onPD(el,fn){ el.addEventListener('pointerdown',fn,{passive:true}); }
+function onPD(el, fn){ if(!el) return; el.addEventListener('pointerdown', fn, {passive:true}); }
 function onPDAll(sel,fn){ document.querySelectorAll(sel).forEach(el=>onPD(el,()=>fn(el))); }
 /* === autopřizpůsobení výšce v ne-fullscreenu === */
 const calcBox = document.getElementById('calc');
@@ -863,5 +863,6 @@ addEventListener('keydown',e=>{
 
 </body>
 </html>
+
 
 
