@@ -1,13 +1,14 @@
 const CACHE_STATIC  = 'calc-static-v7';
 const CACHE_RUNTIME = 'calc-runtime-v7';
 
+const SCOPE = self.registration.scope;
 const PRECACHE = [
-  '/',
-  '/index.html',
-  '/offline.html',
-  '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  new URL('./index.html', SCOPE),
+  new URL('./offline.html', SCOPE),
+  new URL('./manifest.webmanifest', SCOPE),
+  new URL('./icons/icon-192.png', SCOPE),
+  new URL('./icons/icon-512.png', SCOPE),
+  new URL('./icons/qr.png', SCOPE), // ← přidáno
 ];
 
 self.addEventListener('install', (e) => {
@@ -57,3 +58,4 @@ self.addEventListener('fetch', (e) => {
     })());
   }
 });
+
