@@ -1,5 +1,5 @@
-const CACHE_STATIC  = 'calc-static-v7';
-const CACHE_RUNTIME = 'calc-runtime-v7';
+const CACHE_STATIC  = 'calc-static-v8';
+const CACHE_RUNTIME = 'calc-runtime-v8';
 
 const SCOPE = self.registration.scope;
 const PRECACHE = [
@@ -58,4 +58,5 @@ self.addEventListener('fetch', (e) => {
     })());
   }
 });
+
 
