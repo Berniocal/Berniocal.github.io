@@ -420,17 +420,33 @@ onPD(qs('#btnEq'), ()=>{
 const qrImg = qs('#qrImg');
 const qrUrl = qs('#qrUrl');
 
+// --- QR overlay ---
+const qrBackdrop = qs('#qrBackdrop');
+const qrImg = qs('#qrImg');
+
 onPD(qs('#btnQR'), ()=>{
-  // URL tvé kalkulačky na GitHub Pages:
-  const url = location.origin + location.pathname; // případně sem dej fixní public URL
-  // Rychlé vygenerování QR (externí obrázkové API):
-  const api = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=' + encodeURIComponent(url);
-  qrImg.src = api;
-  qrUrl.textContent = url;
   qrBackdrop.style.display = 'grid';
+  history.pushState({qr:true}, '', '#qr'); // umožní zavřít tlačítkem Zpět
 });
-onPD(qs('#qrClose'), ()=>{ qrBackdrop.style.display = 'none'; });
-qrBackdrop.addEventListener('click', (e)=>{ if(e.target === qrBackdrop) qrBackdrop.style.display = 'none'; });
+
+onPD(qs('#qrClose'), ()=>{
+  if (location.hash === '#qr') history.back();
+  else qrBackdrop.style.display = 'none';
+});
+
+// Zavření overlaye při stisku Zpět (mobil/PC)
+window.addEventListener('popstate', ()=>{
+  qrBackdrop.style.display = 'none';
+});
+
+// Klik mimo kartu zavře overlay
+qrBackdrop.addEventListener('click', (e)=>{
+  if (e.target === qrBackdrop) {
+    if (location.hash === '#qr') history.back();
+    else qrBackdrop.style.display = 'none';
+  }
+});
+
 
   }
   evaluate();
@@ -847,4 +863,5 @@ addEventListener('keydown',e=>{
 
 </body>
 </html>
+
 
