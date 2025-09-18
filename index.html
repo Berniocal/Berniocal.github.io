@@ -854,34 +854,66 @@ addEventListener('keydown',e=>{
       </div>
 </div>
 <script>
-  if (!window.__qrInit) {
-    window.__qrInit = true;
+(() => {
+  // ochrana proti dvojité inicializaci
+  if (window.__qrInit) return;
+  window.__qrInit = true;
 
-    const qrBackdrop = document.getElementById('qrBackdrop');
-    const btnQR = document.getElementById('btnQR');
-    const qrClose = document.getElementById('qrClose');
+  // elementy
+  const qrBackdrop = document.getElementById('qrBackdrop');
+  const btnQR = document.getElementById('btnQR');
 
-    function closeQR(){
-      if (location.hash === '#qr') history.back();
-      else qrBackdrop.style.display = 'none';
-    }
-
-    // otevřít
-    btnQR && btnQR.addEventListener('pointerdown', ()=>{
-      qrBackdrop.style.display = 'grid';
-      history.pushState({qr:true}, '', '#qr');
-    }, {passive:true});
-
-    // zavřít
-    qrClose && qrClose.addEventListener('pointerdown', closeQR, {passive:true});
-    qrBackdrop.addEventListener('pointerdown', (e)=>{ if (e.target === qrBackdrop) closeQR(); }, {passive:true});
-    window.addEventListener('popstate', closeQR);
-    window.addEventListener('keydown', (e)=>{ if (e.key==='Escape') closeQR(); });
+  // helpery
+  function isOpen() {
+    return qrBackdrop && qrBackdrop.style.display !== 'none';
   }
+  function openQR(){
+    if (!qrBackdrop) return;
+    qrBackdrop.style.display = 'grid';
+    // přidej stav do historie, aby fungovalo tlačítko Zpět
+    if (location.hash !== '#qr') history.pushState({ qr: true }, '', '#qr');
+  }
+  function closeQR(){
+    if (!qrBackdrop) return;
+    qrBackdrop.style.display = 'none';
+    // když jsme na #qr, vrať historii, aby se hash uklidil
+    if (location.hash === '#qr') {
+      // použij back() – ať se chová správně i v PWA
+      history.back();
+    }
+  }
+
+  // otevřít po kliknutí na tlačítko
+  btnQR && btnQR.addEventListener('pointerdown', openQR, { passive: true });
+
+  // zavřít klikem mimo bílý box (na tmavý backdrop)
+  qrBackdrop && qrBackdrop.addEventListener('pointerdown', (e) => {
+    if (e.target === qrBackdrop) closeQR();
+  }, { passive: true });
+
+  // zavřít klávesou Esc
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen()) closeQR();
+  });
+
+  // reaguj na tlačítko Zpět (změna historie)
+  window.addEventListener('popstate', () => {
+    // když hash už není #qr, jen se ujisti, že overlay je skrytý
+    if (location.hash !== '#qr' && qrBackdrop) qrBackdrop.style.display = 'none';
+  });
+
+  // DŮLEŽITÉ: při startu nikdy neotvírej QR, i kdyby zůstal hash z dřívějška
+  if (location.hash === '#qr') {
+    history.replaceState(null, '', location.pathname + location.search);
+    if (qrBackdrop) qrBackdrop.style.display = 'none';
+  }
+})();
 </script>
+
 
 </body>
 </html>
+
 
 
 
