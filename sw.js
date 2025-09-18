@@ -16,16 +16,24 @@ self.addEventListener('install', (e) => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil((async () => {
+// 1) konstanta cache
+const CACHE_NAME = 'app-v3'; // zvýš číslo oproti předchozí verzi
+
+// 2) install (precache)
+self.addEventListener('install', event => { /* ... */ });
+
+// 3) activate (SEM vlož tvůj blok pro mazání starých cache)
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(k => ![CACHE_STATIC, CACHE_RUNTIME].includes(k)).map(k => caches.delete(k)));
-    await self.clients.claim();
+    await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+    self.clients.claim();
   })());
 });
 
-self.addEventListener('fetch', (e) => {
-  const req = e.request;
+// 4) fetch (runtime cache / fallback)
+self.addEventListener('fetch', event => { /* ... */ });
+
 
   // Navigace – cache-first
   if (req.mode === 'navigate') {
@@ -58,5 +66,6 @@ self.addEventListener('fetch', (e) => {
     })());
   }
 });
+
 
 
