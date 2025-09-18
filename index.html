@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" href="./manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -844,7 +844,7 @@ addEventListener('keydown',e=>{
 <script>
   // Registrace service workeru – co nejdřív po loadu
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js', { scope: './' }));
   }
 </script>
   <div id="qrBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:9999">
@@ -854,9 +854,36 @@ addEventListener('keydown',e=>{
     <button id="qrClose" class="oval" style="margin-top:10px;background:#e8edf3;color:#263445;border-radius:12px;padding:8px 14px">Zavřít</button>
   </div>
 </div>
+<script>
+  if (!window.__qrInit) {
+    window.__qrInit = true;
+
+    const qrBackdrop = document.getElementById('qrBackdrop');
+    const btnQR = document.getElementById('btnQR');
+    const qrClose = document.getElementById('qrClose');
+
+    function closeQR(){
+      if (location.hash === '#qr') history.back();
+      else qrBackdrop.style.display = 'none';
+    }
+
+    // otevřít
+    btnQR && btnQR.addEventListener('pointerdown', ()=>{
+      qrBackdrop.style.display = 'grid';
+      history.pushState({qr:true}, '', '#qr');
+    }, {passive:true});
+
+    // zavřít
+    qrClose && qrClose.addEventListener('pointerdown', closeQR, {passive:true});
+    qrBackdrop.addEventListener('pointerdown', (e)=>{ if (e.target === qrBackdrop) closeQR(); }, {passive:true});
+    window.addEventListener('popstate', closeQR);
+    window.addEventListener('keydown', (e)=>{ if (e.key==='Escape') closeQR(); });
+  }
+</script>
 
 </body>
 </html>
+
 
 
 
