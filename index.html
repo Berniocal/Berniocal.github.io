@@ -462,33 +462,6 @@ function captureRepeat(tokens){
   if(i<0){ state.repeat=null; return; }
   state.repeat = { op: tokens[i].op, rhs: tokens[n-1].value };
 }
-const qrBackdrop = document.getElementById('qrBackdrop');
-const btnQR = document.getElementById('btnQR');
-const qrClose = document.getElementById('qrClose');
-
-onPD(btnQR, ()=>{
-  qrBackdrop.style.display = 'grid';
-  history.pushState({qr:true}, '', '#qr');   // umožní zavření tlačítkem Zpět
-});
-
-onPD(qrClose, ()=>{
-  if (location.hash === '#qr') history.back();
-  else qrBackdrop.style.display = 'none';
-});
-
-window.addEventListener('popstate', ()=>{
-  if (qrBackdrop) qrBackdrop.style.display = 'none';
-});
-
-if (qrBackdrop){
-  qrBackdrop.addEventListener('click', (e)=>{
-    if (e.target === qrBackdrop) {
-      if (location.hash === '#qr') history.back();
-      else qrBackdrop.style.display = 'none';
-    }
-  });
-}
-
 /* ===== parser ===== */
 function normalizeInput(s){
   s=s.replace(/\s+/g,'').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
@@ -913,6 +886,7 @@ addEventListener('keydown',e=>{
 
 </body>
 </html>
+
 
 
 
