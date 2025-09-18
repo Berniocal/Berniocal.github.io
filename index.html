@@ -102,7 +102,7 @@
   <div class="boards">
     <div class="topgrid">
       <button class="oval" id="btnSHIFT">SHIFT</button>
-      <button class="oval" id="btnALPHA">ALPHA</button>
+      <button class="oval" id="btnQR">QR</button>
       <button class="oval replay span2" id="btnLeft">◀</button>
       <button class="oval replay span2" id="btnRight">▶</button>
       <button class="oval" id="btnMODE"><span class="legend">CLR</span><span class="main">MODE</span></button>
@@ -416,6 +416,22 @@ onPD(qs('#btnEq'), ()=>{
     const sym = prettyOp(state.repeat.op);
     state.raw = 'Ans' + sym + String(state.repeat.rhs);
     state.cursor = state.raw.length;
+    const qrBackdrop = qs('#qrBackdrop');
+const qrImg = qs('#qrImg');
+const qrUrl = qs('#qrUrl');
+
+onPD(qs('#btnQR'), ()=>{
+  // URL tvé kalkulačky na GitHub Pages:
+  const url = location.origin + location.pathname; // případně sem dej fixní public URL
+  // Rychlé vygenerování QR (externí obrázkové API):
+  const api = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=' + encodeURIComponent(url);
+  qrImg.src = api;
+  qrUrl.textContent = url;
+  qrBackdrop.style.display = 'grid';
+});
+onPD(qs('#qrClose'), ()=>{ qrBackdrop.style.display = 'none'; });
+qrBackdrop.addEventListener('click', (e)=>{ if(e.target === qrBackdrop) qrBackdrop.style.display = 'none'; });
+
   }
   evaluate();
 });
@@ -821,5 +837,14 @@ addEventListener('keydown',e=>{
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
   }
 </script>
+  <div id="qrBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:9999">
+  <div style="background:#fff;border-radius:16px;padding:16px;color:#111;text-align:center">
+    <img id="qrImg" alt="QR kód" width="280" height="280">
+    <div id="qrUrl" style="font:14px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto;margin-top:8px;word-break:break-all"></div>
+    <button id="qrClose" class="oval" style="margin-top:10px;background:#e8edf3;color:#263445;border-radius:12px;padding:8px 14px">Zavřít</button>
+  </div>
+</div>
+
 </body>
 </html>
+
