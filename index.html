@@ -200,61 +200,11 @@ window.addEventListener('orientationchange', fitToViewport);
 /* ===== stav ===== */
 const exprEl=qs('#expr'), resEl=qs('#res');
 const bShift=qs('#bShift'), bHyp=qs('#bHyp'), bDRG=qs('#bDRG'), bENG=qs('#bENG'), bDMS=qs('#bDMS'), bMem=qs('#bMem');
-const TEACHER_URL = "https://TVŮJ-ÚČET.github.io/TVOJE-REPO/teacher.html"; // uprav na svůj GitHub Pages odkaz
-
-function renderModeMenu(){
-  if(state.modeStage===1){
-    // 1. stisk MODE → výběr DRG
-    exprEl.innerHTML = '<span style="opacity:.95">1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3</span>';
-    resEl.innerHTML  = '<span>DEG</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span>RAD</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span>GRAD</span>';
-    return true;
-  }
-  if(state.modeStage===2){
-    // 2. stisk MODE → EXAM/TEACHER
-    exprEl.innerHTML = '<span style="opacity:.95">1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3</span>';
-    resEl.innerHTML  = '<span>EXAM&nbsp;START</span>&nbsp;&nbsp;&nbsp;<span>EXAM&nbsp;END</span>&nbsp;&nbsp;&nbsp;<span>TEACHER</span>';
-    return true;
-  }
-  return false;
-}
-
-// akce menu čísel 1/2/3
-function handleMenuChoice(digit){
-  if(state.modeStage===1){
-    if(digit==='1') state.drg='DEG';
-    else if(digit==='2') state.drg='RAD';
-    else if(digit==='3') state.drg='GRAD';
-    state.modeStage=0; state.resultShown=false; state.resultStr='';
-    render();
-    return true;
-  }
-  if(state.modeStage===2){
-    if(digit==='1'){ startExamScan(); }
-    else if(digit==='2'){ endExamScan(); }
-    else if(digit==='3'){ openTeacher(); }
-    state.modeStage=0; render();
-    return true;
-  }
-  return false;
-}
-
-// stuby – napojíš na své skenování/ukončování:
-function startExamScan(){ 
-  // TODO: sem dej spuštění skeneru START
-  state.resultShown=true; state.resultStr='➜ Scan START QR';
-}
-function endExamScan(){   
-  // TODO: sem dej spuštění skeneru END
-  state.resultShown=true; state.resultStr='➜ Scan END QR';
-}
-function openTeacher(){
-  try{ window.open(TEACHER_URL, '_blank','noopener'); }catch(_){}
-}
 
 let state={ raw:'', cursor:0, ans:0, drg:'DEG', shift:false, hyp:false, eng:false,
             dmsDisplay:false, frac:false, fracMixed:true, memory:0, memOn:false,
             lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
-            modeStage:0, repeat:null }; // modeStage: 0=normál, 1=DRG menu, 2=EXAM/TEACHER menu
+            modePick:false, repeat:null };
 
 /* ===== pretty + caret, auto scroll kurzoru ===== */
 function prettySegments(raw){
@@ -297,11 +247,6 @@ function render(){
   bDMS.classList.toggle('on',state.dmsDisplay);
   bMem.classList.toggle('on',state.memOn);
   bDRG.textContent=state.drg;
-  // pokud jsme v menu, vykresli dvě řádky a skonči
-  if(renderModeMenu()){ 
-    // schovej blikající caret
-    return;
-  }
 
   if(state.modePick){
     exprEl.innerHTML = '<span style="opacity:.9">1&nbsp;DEG&nbsp;&nbsp;&nbsp;2&nbsp;RAD&nbsp;&nbsp;&nbsp;3&nbsp;GRAD</span>';
@@ -371,26 +316,20 @@ function ac(hard=false){ state.raw=''; state.cursor=0; if(hard){ state.ans=0; } 
 
 /* ovládací prvky */
 onPD(qs('#btnSHIFT'), ()=>{
-  // Když je otevřené MODE menu (DRG nebo EXAM/TEACHER), SHIFT ho jen zavře
-  if (state.modeStage > 0) { 
-    state.modeStage = 0; 
-    render(); 
-    return; 
-  }
-  // Jinak klasické přepnutí SHIFTu
+  if(state.modePick){ state.modePick = false; }
   state.shift = !state.shift;
   render();
 });
 
-
 onPD(qs('#btnMODE'), ()=>{ 
   if(state.shift){ state.shift=false; state.ans=0; ac(true); return; }
-  state.resultShown=false; state.resultStr='';
-  state.modeStage = (state.modeStage===0) ? 1 : (state.modeStage===1 ? 2 : 0);
+  state.modePick = true;
+  state.resultShown = false;
+  state.resultStr = '';
   render();
 });
 
-
+onPD(qs('#btnALPHA'), ()=>{});
 onPD(qs('#btnLeft'),  ()=> moveCursor(-1));
 onPD(qs('#btnRight'), ()=> moveCursor(+1));
 
@@ -507,7 +446,7 @@ function opAfterResult(sym){
 }
 onPDAll('[data-ins]', el=>{
   const t=el.dataset.ins;
-  if(state.modeStage>0 && /^[0-9]$/.test(t)){ handleMenuChoice(t); return; }
+  if(state.modePick && /^[0-9]$/.test(t)){ handleModePick(t); return; }
 
   if(t==='+'||t==='−'||t==='×'||t==='÷'){ opAfterResult(t); }
   else if(t==='('||t===')'||t===','||/^[0-9.]$/.test(t)){ insRaw(t); }
@@ -864,12 +803,7 @@ addEventListener('keydown',e=>{
   if(k==='Escape'){e.preventDefault();ac();return;}
   if(k==='ArrowLeft'){e.preventDefault();moveCursor(-1);return;}
   if(k==='ArrowRight'){e.preventDefault();moveCursor(+1);return;}
-  if(/^[0-9]$/.test(k)){
-  if(state.modeStage>0){ handleMenuChoice(k); }
-  else { insRaw(k); }
-  return;
-}
-
+  if(/^[0-9]$/.test(k)){ if(state.modePick){ handleModePick(k); } else { insRaw(k); } return; }
   if(k==='('||k===')'||k===','||k==='.'||k==='%'){insRaw(k);return;}
   if(k==='^'){opAfterResult('^');return;}
   if(k==='+'){opAfterResult('+');return;}
@@ -886,7 +820,7 @@ addEventListener('keydown',e=>{
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js', { scope: './' }));
   }
 </script>
- <div id="qrBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);place-items:center;z-index:9999">
+  <div id="qrBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:9999">
   <div style="background:#fff;border-radius:16px;padding:16px;color:#111;text-align:center">
     <img id="qrImg" src="./icons/qr.png?v=2" alt="QR kód" width="280" height="280">
     <div id="qrUrl" style="font:14px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto;margin-top:8px;word-break:break-all"></div>
@@ -952,9 +886,6 @@ addEventListener('keydown',e=>{
 
 </body>
 </html>
-
-
-
 
 
 
