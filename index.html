@@ -329,7 +329,6 @@ onPD(qs('#btnMODE'), ()=>{
   render();
 });
 
-onPD(qs('#btnALPHA'), ()=>{});
 onPD(qs('#btnLeft'),  ()=> moveCursor(-1));
 onPD(qs('#btnRight'), ()=> moveCursor(+1));
 
@@ -820,7 +819,7 @@ addEventListener('keydown',e=>{
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js', { scope: './' }));
   }
 </script>
-  <div id="qrBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:9999">
+ <div id="qrBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);place-items:center;z-index:9999">
   <div style="background:#fff;border-radius:16px;padding:16px;color:#111;text-align:center">
     <img id="qrImg" src="./icons/qr.png?v=2" alt="QR kód" width="280" height="280">
     <div id="qrUrl" style="font:14px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto;margin-top:8px;word-break:break-all"></div>
@@ -886,6 +885,7 @@ addEventListener('keydown',e=>{
 
 </body>
 </html>
+
 
 
 
