@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Teacher QR – generátor START/END</title>
+<style>
+:root{--ink:#0b1220;--muted:#667085;--card:#ffffff;--edge:#e6eaf3;--brand:#2563eb}
+*{box-sizing:border-box}
+body{font-family:system-ui,Segoe UI,Roboto,Arial;background:#f5f7fb;color:var(--ink);margin:0;padding:20px}
+.container{max-width:820px;margin:0 auto;background:var(--card);padding:18px;border-radius:12px;box-shadow:0 8px 28px rgba(10,20,40,.08);border:1px solid #eef2f7}
+h1{margin:0 0 12px}
+.row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+label{font-size:14px;color:#243048}
+input,select,button{padding:9px 12px;border-radius:8px}
+input[type="text"],input[type="number"],select{border:1px solid #d6dbe7;outline:none}
+input[type="text"]{width:140px;text-transform:uppercase}
+input[type="number"]{width:120px}
+button{border:none;background:var(--brand);color:#fff;cursor:pointer}
+button.secondary{background:#0f172a}
+button:disabled{opacity:.6;cursor:not-allowed}
+canvas{display:block}
+#qrcanvas{border:1px solid var(--edge);padding:6px;background:#fff;border-radius:8px}
+.card{background:#f9fbff;border:1px solid #e8eef9;border-radius:10px;padding:10px;margin-top:12px}
+.mono{font-family:ui-monospace,Consolas,Menlo,monospace;font-size:13px;background:#0f172a;color:#e2e8ff;border-radius:8px;padding:8px;white-space:pre-wrap;word-break:break-all}
+.note{background:#fff8e1;border:1px solid #ffe08a;color:#6a4a00;border-radius:8px;padding:8px;margin:10px 0}
+hr{border:none;border-top:1px dashed #e4e8f2;margin:14px 0}
+.kbd{background:#eef2ff;border:1px solid #cfd8ff;border-radius:6px;padding:2px 6px}
+.ok{color:#065f46}
+.err{color:#991b1b}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Teacher QR – generátor START/END</h1>
+
+  <div class="row">
+    <label for="code">Kód (3 znaky)</label>
+    <input id="code" maxlength="3" placeholder="A7K" autocomplete="off" />
+    <label for="type">Typ</label>
+    <select id="type">
+      <option value="START">START</option>
+      <option value="END">END</option>
+    </select>
+    <label for="exp">Platnost (s)</label>
+    <input id="exp" type="number" value="60" min="5" step="5" />
+    <button id="gen">Generovat QR</button>
+    <button id="save" class="secondary" disabled>Stáhnout PNG</button>
+  </div>
+
+  <div class="note">
+    Kalkulačka očekává QR kód, který uvnitř nese JSON <span class="kbd">{"payload":"{...}"}</span>.  
+    Backend (Worker) hlídá, aby byl <strong>START</strong> kód v daný den <strong>jedinečný</strong>.
+  </div>
+
+  <canvas id="qrcanvas" width="256" height="256"></canvas>
+
+  <div class="card">
+    <strong>Vnitřní payload (pro kontrolu):</strong>
+    <div id="payload" class="mono">—</div>
+  </div>
+
+  <div class="card">
+    <strong>Stav:</strong>
+    <div id="log">Připraveno.</div>
+  </div>
+
+  <hr>
+
+  <div class="card">
+    <strong>Dnes vygenerované START kódy:</strong>
+    <div id="used" class="mono">—</div>
+  </div>
+</div>
+
+<!-- QR knihovna -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<script>
+/* ==== NASTAV: adresa tvého Cloudflare Workeru ==== */
+const API_BASE = "https://TVŮJ-WORKER.workers.dev"; // ← sem dej URL svého Workeru
+
+/* ===== Pomocné ===== */
+const el = (id)=>document.getElementById(id);
+const codeEl=el('code'), typeEl=el('type'), expEl=el('exp');
+const genBtn=el('gen'), saveBtn=el('save');
+const payloadEl=el('payload'), logEl=el('log'), usedEl=el('used');
+const qrCanvas = el('qrcanvas');
+
+function normalizeCode(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3); }
+
+async function fetchJSON(url, opts={}){
+  const res = await fetch(url, {
+    headers: { 'Content-Type':'application/json' },
+    ...opts
+  });
+  let dataText = '';
+  try { dataText = await res.text(); } catch {}
+  let data = null;
+  try { data = dataText ? JSON.parse(dataText) : null; } catch { data = { raw: dataText }; }
+  if(!res.ok){
+    const msg = (data && data.error) ? data.error : (res.status+' '+res.statusText);
+    throw new Error(msg);
+  }
+  return data;
+}
+
+function drawQR(text){
+  return new Promise((resolve,reject)=>{
+    QRCode.toCanvas(qrCanvas, text, { width:256, margin:1, errorCorrectionLevel:'M' }, (err)=>{
+      if(err) reject(err); else resolve();
+    });
+  });
+}
+
+function savePng(){
+  const url = qrCanvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  const code = normalizeCode(codeEl.value)||'CODE';
+  const typ  = (typeEl.value||'QR').toUpperCase();
+  a.href = url; a.download = `qr_${typ}_${code}.png`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+async function refreshUsed(){
+  try{
+    const data = await fetchJSON(`${API_BASE}/api/used`);
+    usedEl.textContent = (data.used && data.used.length) ? data.used.join(', ') : '—';
+  }catch(e){
+    usedEl.textContent = 'Nelze načíst: ' + e.message;
+  }
+}
+
+genBtn.addEventListener('click', async ()=>{
+  const code = normalizeCode(codeEl.value);
+  const type = (typeEl.value === 'END') ? 'END' : 'START';
+  const exp  = Math.max(5, Number(expEl.value)||60);
+
+  if(code.length !== 3){
+    alert('Zadej přesně 3 alfanumerické znaky (např. A7K).');
+    return;
+  }
+
+  try{
+    logEl.innerHTML = 'Generuji…';
+    const resp = await fetchJSON(`${API_BASE}/api/qr`, {
+      method: 'POST',
+      body: JSON.stringify({ code, type, expSec: exp })
+    });
+
+    const wrappedStr = JSON.stringify(resp.wrapped); // přesně tohle jde do QR
+    await drawQR(wrappedStr);
+    payloadEl.textContent = JSON.stringify(resp.inner, null, 2);
+    logEl.innerHTML = `<span class="ok">Hotovo:</span> ${resp.inner.type} • kód ${resp.inner.code} • platnost ${resp.inner.expSec}s`;
+    saveBtn.disabled = false;
+
+    // po START osvěž seznam použitých kódů
+    if(type === 'START'){ refreshUsed(); }
+  }catch(e){
+    logEl.innerHTML = `<span class="err">Chyba:</span> ${e.message}`;
+    saveBtn.disabled = true;
+  }
+});
+
+saveBtn.addEventListener('click', savePng);
+codeEl.addEventListener('input', ()=> codeEl.value = normalizeCode(codeEl.value));
+
+// init
+refreshUsed();
+</script>
+</body>
+</html>
