@@ -1,8 +1,8 @@
 // ===== Service Worker for Bernio (GitHub Pages) =====
 
 // verze cache – při každé změně zvýš čísla
-const CACHE_STATIC  = 'calc-static-v11';
-const CACHE_RUNTIME = 'calc-runtime-v11';
+const CACHE_STATIC  = 'calc-static-v12';
+const CACHE_RUNTIME = 'calc-runtime-v12';
 
 // Cesty vztažené ke scope SW (funguje správně v podcestě /<repo>/)
 const SCOPE   = self.registration.scope;
@@ -90,4 +90,5 @@ self.addEventListener('fetch', (event) => {
     return cached || network || Response.error();
   })());
 });
+
 
