@@ -28,6 +28,7 @@ hr{border:none;border-top:1px dashed #e4e8f2;margin:14px 0}
 .kbd{background:#eef2ff;border:1px solid #cfd8ff;border-radius:6px;padding:2px 6px}
 .ok{color:#065f46}
 .err{color:#991b1b}
+.small{font-size:12px;color:#4b5563}
 </style>
 </head>
 <body>
@@ -49,8 +50,8 @@ hr{border:none;border-top:1px dashed #e4e8f2;margin:14px 0}
   </div>
 
   <div class="note">
-    Kalkulačka očekává QR kód, který uvnitř nese JSON <span class="kbd">{"payload":"{...}"}</span>.  
-    Backend (Worker) hlídá, aby byl <strong>START</strong> kód v daný den <strong>jedinečný</strong>.
+    Kalkulačka očekává QR kód, který uvnitř nese JSON <span class="kbd">{"payload":"{...}"}</span> –
+    přesně takto to čte <em>Bernio</em> (nejdřív <span class="kbd">outer = JSON.parse(text)</span>, pak <span class="kbd">inner = JSON.parse(outer.payload)</span>).
   </div>
 
   <canvas id="qrcanvas" width="256" height="256"></canvas>
@@ -58,6 +59,7 @@ hr{border:none;border-top:1px dashed #e4e8f2;margin:14px 0}
   <div class="card">
     <strong>Vnitřní payload (pro kontrolu):</strong>
     <div id="payload" class="mono">—</div>
+    <div class="small">Pole: <span class="kbd">type</span> (START/END), <span class="kbd">code</span> (3zn), <span class="kbd">ts</span> (epoch s), <span class="kbd">expSec</span> (sekundy)</div>
   </div>
 
   <div class="card">
@@ -76,37 +78,30 @@ hr{border:none;border-top:1px dashed #e4e8f2;margin:14px 0}
 <!-- QR knihovna -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script>
-/* ==== NASTAV: adresa tvého Cloudflare Workeru ==== */
-const API_BASE = "https://examqr.jendabernard.workers.dev"; // ← sem dej URL svého Workeru
+/* ==== NASTAV: adresa tvého Cloudflare Workeru (volitelné) ==== */
+const API_BASE = "https://examqr.jendabernard.workers.dev"; // nech prázdné "" pro čistě lokální režim
 
 /* ===== Pomocné ===== */
-const el = (id)=>document.getElementById(id);
-const codeEl=el('code'), typeEl=el('type'), expEl=el('exp');
-const genBtn=el('gen'), saveBtn=el('save');
-const payloadEl=el('payload'), logEl=el('log'), usedEl=el('used');
-const qrCanvas = el('qrcanvas');
+const $ = (id)=>document.getElementById(id);
+const codeEl=$('code'), typeEl=$('type'), expEl=$('exp');
+const genBtn=$('gen'), saveBtn=$('save');
+const payloadEl=$('payload'), logEl=$('log'), usedEl=$('used');
+const qrCanvas = $('qrcanvas');
 
 function normalizeCode(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3); }
 
 async function fetchJSON(url, opts={}){
-  const res = await fetch(url, {
-    headers: { 'Content-Type':'application/json' },
-    ...opts
-  });
-  let dataText = '';
-  try { dataText = await res.text(); } catch {}
-  let data = null;
-  try { data = dataText ? JSON.parse(dataText) : null; } catch { data = { raw: dataText }; }
-  if(!res.ok){
-    const msg = (data && data.error) ? data.error : (res.status+' '+res.statusText);
-    throw new Error(msg);
-  }
+  const res = await fetch(url, { headers: { 'Content-Type':'application/json' }, ...opts });
+  const text = await res.text().catch(()=>"");
+  let data=null; try{ data = text ? JSON.parse(text) : null; }catch{ data = { raw:text }; }
+  if(!res.ok){ throw new Error((data&&data.error)||(`${res.status} ${res.statusText}`)); }
   return data;
 }
 
 function drawQR(text){
   return new Promise((resolve,reject)=>{
-    QRCode.toCanvas(qrCanvas, text, { width:256, margin:1, errorCorrectionLevel:'M' }, (err)=>{
+    // Pozor: očekáváme PLAIN TEXT = JSON string (ne Object)
+    QRCode.toCanvas(qrCanvas, String(text), { width:256, margin:1, errorCorrectionLevel:'M' }, (err)=>{
       if(err) reject(err); else resolve();
     });
   });
@@ -121,48 +116,67 @@ function savePng(){
   document.body.appendChild(a); a.click(); a.remove();
 }
 
+function makeInner({ code, type, expSec }){
+  return { code, type, expSec, ts: Math.floor(Date.now()/1000) };
+}
+function makeWrapped(inner){
+  // Bernio očekává objekt { payload: "{...}" } – payload je STRING s vnořeným JSON
+  return { payload: JSON.stringify(inner) };
+}
+
 async function refreshUsed(){
+  if(!API_BASE){ usedEl.textContent = '—'; return; }
   try{
     const data = await fetchJSON(`${API_BASE}/api/used`);
     usedEl.textContent = (data.used && data.used.length) ? data.used.join(', ') : '—';
-  }catch(e){
-    usedEl.textContent = 'Nelze načíst: ' + e.message;
-  }
+  }catch(e){ usedEl.textContent = 'Nelze načíst: ' + e.message; }
 }
 
-genBtn.addEventListener('click', async ()=>{
+async function generate(){
   const code = normalizeCode(codeEl.value);
   const type = (typeEl.value === 'END') ? 'END' : 'START';
   const exp  = Math.max(5, Number(expEl.value)||60);
 
-  if(code.length !== 3){
-    alert('Zadej přesně 3 alfanumerické znaky (např. A7K).');
-    return;
-  }
+  if(code.length !== 3){ alert('Zadej přesně 3 alfanumerické znaky (např. A7K).'); return; }
 
   try{
-    logEl.innerHTML = 'Generuji…';
-    const resp = await fetchJSON(`${API_BASE}/api/qr`, {
-      method: 'POST',
-      body: JSON.stringify({ code, type, expSec: exp })
-    });
+    logEl.innerHTML = 'Generuji…'; saveBtn.disabled = true;
 
-    const wrappedStr = JSON.stringify(resp.wrapped); // přesně tohle jde do QR
-    await drawQR(wrappedStr);
-    payloadEl.textContent = JSON.stringify(resp.inner, null, 2);
-    logEl.innerHTML = `<span class="ok">Hotovo:</span> ${resp.inner.type} • kód ${resp.inner.code} • platnost ${resp.inner.expSec}s`;
+    let inner, wrapped;
+
+    if(API_BASE){
+      // API může vracet wrapped jako objekt NEBO jako string – ošetříme obojí
+      const resp = await fetchJSON(`${API_BASE}/api/qr`, { method: 'POST', body: JSON.stringify({ code, type, expSec: exp }) });
+      // Normalizace
+      const w = resp.wrapped; // očekáváme {payload:"{...}"} nebo "{\"payload\":...}"
+      if(typeof w === 'string'){
+        try{ wrapped = JSON.parse(w); }catch{ wrapped = { payload: w }; }
+      } else { wrapped = w; }
+      if(!wrapped || typeof wrapped.payload !== 'string'){ throw new Error('Neplatná odpověď API (chybí payload).'); }
+      // Inner – vezmeme z API pokud poslal, jinak rozparsujeme
+      inner = resp.inner || (JSON.parse(wrapped.payload));
+    } else {
+      // Lokální fallback – bez backendové kontroly unikátnosti
+      inner = makeInner({ code, type, expSec: exp });
+      wrapped = makeWrapped(inner);
+    }
+
+    const qrText = JSON.stringify(wrapped); // tohle přesně načítá Bernio
+    await drawQR(qrText);
+    payloadEl.textContent = JSON.stringify(inner, null, 2);
+    logEl.innerHTML = `<span class="ok">Hotovo:</span> ${inner.type} • kód ${inner.code} • platnost ${inner.expSec}s`;
     saveBtn.disabled = false;
-
-    // po START osvěž seznam použitých kódů
     if(type === 'START'){ refreshUsed(); }
   }catch(e){
     logEl.innerHTML = `<span class="err">Chyba:</span> ${e.message}`;
     saveBtn.disabled = true;
   }
-});
+}
 
-saveBtn.addEventListener('click', savePng);
-codeEl.addEventListener('input', ()=> codeEl.value = normalizeCode(codeEl.value));
+// Dráty
+$('gen').addEventListener('click', generate);
+$('save').addEventListener('click', savePng);
+$('code').addEventListener('input', ()=> codeEl.value = normalizeCode(codeEl.value));
 
 // init
 refreshUsed();
