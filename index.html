@@ -23,6 +23,11 @@
     padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     color:#fff; overscroll-behavior:contain;
   }
+  .menu-top{ font-size: clamp(18px,4.2vw,22px); letter-spacing:.04em }
+  .menu-bot{ font-size: clamp(16px,3.8vw,20px); font-weight:700 }
+  .menu-grid{ display:flex; justify-content:space-between; padding:0 6px }
+  .menu-grid span{ min-width: 30%; text-align:center }
+
   .calc{
     width:min(480px,100vw);
     height:auto;
@@ -56,8 +61,8 @@
   .res .sci sup.exp{ font-size:.5em; vertical-align:super; }
 
   .boards{display:grid;grid-template-rows:auto auto;gap:12px}
-  .topgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap);grid-auto-rows:minmax(46px,auto);}
-  .botgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);grid-auto-rows:minmax(64px,auto);}
+  .topgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap);grid-auto-rows:minmax(46px,auto);} 
+  .botgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);grid-auto-rows:minmax(64px,auto);} 
 
   .oval{background:var(--oval);color:#263445;border-radius:18px;padding:.6em .2em;text-align:center;font-weight:700;box-shadow:var(--shadow);touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}
   #btnSHIFT{color:var(--shift)} #btnALPHA{color:var(--alpha)} #btnFS{font-weight:800}
@@ -164,6 +169,24 @@
   </div>
 </div>
 
+<!-- RESET SW/Cache helper -->
+<script>
+(async () => {
+  const p = new URL(location.href).searchParams;
+  if (p.get('reset') === '1' && 'serviceWorker' in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) await r.unregister();
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const k of keys) await caches.delete(k);
+      }
+    } catch {}
+    location.replace(location.pathname);
+  }
+})();
+</script>
+
 <script>
 /* ===== drobné utily ===== */
 const qs=s=>document.querySelector(s);
@@ -174,7 +197,7 @@ const calcBox = document.getElementById('calc');
 function isFS(){ const d=document; return !!(d.fullscreenElement||d.webkitFullscreenElement); }
 
 function fitToViewport(){
-  if(isFS()){ 
+  if(isFS()){
     calcBox.style.transform='scale(1)';
     calcBox.style.marginTop='';
     return;
@@ -200,11 +223,223 @@ window.addEventListener('orientationchange', fitToViewport);
 /* ===== stav ===== */
 const exprEl=qs('#expr'), resEl=qs('#res');
 const bShift=qs('#bShift'), bHyp=qs('#bHyp'), bDRG=qs('#bDRG'), bENG=qs('#bENG'), bDMS=qs('#bDMS'), bMem=qs('#bMem');
+const calcEl = document.getElementById('calc');
+const TEACHER_URL = "https://berniocal.github.io/teacher.html"; // jediný zdroj pravdy
 
+function renderModeMenu(){
+  if(state.modeStage===1){
+    exprEl.innerHTML =
+      '<div class="menu-grid menu-top"><span>1</span><span>2</span><span>3</span></div>';
+    resEl.innerHTML  =
+      '<div class="menu-grid menu-bot"><span>DEG</span><span>RAD</span><span>GRAD</span></div>';
+    return true;
+  }
+  if(state.modeStage===2){
+    exprEl.innerHTML =
+      '<div class="menu-grid menu-top"><span>1</span><span>2</span><span>3</span></div>';
+    resEl.innerHTML  =
+      '<div class="menu-grid menu-bot"><span>EXAM&nbsp;START</span><span>EXAM&nbsp;END</span><span>TEACHER</span></div>';
+    return true;
+  }
+  return false;
+}
+
+// akce menu čísel 1/2/3
+function handleMenuChoice(digit){
+  if(state.modeStage===1){
+    if(digit==='1') state.drg='DEG';
+    else if(digit==='2') state.drg='RAD';
+    else if(digit==='3') state.drg='GRAD';
+    state.modeStage=0; state.resultShown=false; state.resultStr='';
+    render();
+    return true;
+  }
+  if(state.modeStage===2){
+    if(digit==='1'){ startExamScan(); }
+    else if(digit==='2'){ endExamScan(); }
+    else if(digit==='3'){ openTeacher(); }
+    state.modeStage=0; render();
+    return true;
+  }
+  return false;
+}
+
+/* ========= ExamGuard: offline + pozadí + pohyb + LOCK ========= */
+const ExamGuard = (() => {
+  const ui = {
+    overlay: null,
+    text: null
+  };
+  const S = {
+    active: false,
+    locked: false,
+    calibrating: false,
+    grace: 0,               // ms ochranné okno po startu / během END
+    lastMoveAt: 0,
+    stillStart: 0
+  };
+
+  // UI overlay
+  function ensureUI(){
+    if(ui.overlay) return;
+    const ov = document.createElement('div');
+    ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:99999;color:#fff;font:700 22px/1.4 system-ui,Segoe UI,Roboto;text-align:center;padding:24px";
+    const box = document.createElement('div');
+    box.style.cssText = "max-width:520px;background:#2b0000;border:2px solid #ff3b30;border-radius:14px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.5)";
+    const h = document.createElement('div');
+    h.textContent = "PODVOD – jdi k učiteli";
+    h.style.cssText = "color:#ff3b30;font-size:24px;margin-bottom:8px";
+    const t = document.createElement('div');
+    t.id = "examGuardText";
+    t.innerHTML = "Aplikace byla zablokována.";
+    t.style.cssText = "opacity:.95";
+    box.appendChild(h); box.appendChild(t); ov.appendChild(box);
+    document.body.appendChild(ov);
+    ui.overlay = ov; ui.text = t;
+  }
+  function showLock(msg){
+    ensureUI();
+    ui.text.innerHTML = msg || "Porušení pravidel.";
+    ui.overlay.style.display = "grid";
+  }
+
+  function alertBuzzer(){
+    try{ navigator.vibrate && navigator.vibrate([400,200,400,200,400,200,400,200,400,200]); }catch{}
+    try{
+      const actx = new (window.AudioContext||window.webkitAudioContext)();
+      const o = actx.createOscillator(); const g = actx.createGain();
+      o.type = 'square'; o.frequency.value = 880; g.gain.value = 0.05;
+      o.connect(g).connect(actx.destination); o.start();
+      setTimeout(()=>{ o.stop(); actx.close(); }, 10000);
+    }catch{}
+  }
+
+  function lock(reason){
+    if(S.locked) return;
+    S.locked = true; S.active = false; S.calibrating = false;
+    detachSensors();
+    showLock(reason || "Aplikace byla zablokována.");
+    alertBuzzer();
+  }
+
+  function onVisibility(){
+    if(!S.active) return;
+    if(document.hidden && Date.now() > S.grace){ 
+      lock("Aplikace šla do pozadí / byla skryta.");
+    }
+  }
+  function onOnline(){
+    if(!S.active) return;
+    if(navigator.onLine){ lock("Zařízení je online (wifi/data)."); }
+  }
+
+  let motionHandler = null;
+  function attachSensors(){
+    window.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('online', onOnline);
+    motionHandler = (ev) => {
+      if(!S.active) return;
+      const a = ev.accelerationIncludingGravity || ev.acceleration || {};
+      const ax = Math.abs(a.x||0), ay = Math.abs(a.y||0), az = Math.abs(a.z||0);
+      const mag = Math.sqrt(ax*ax + ay*ay + az*az);
+
+      const now = Date.now();
+
+      if(S.calibrating){
+        const still = mag < 0.15; // velmi klidné
+        if(still){
+          if(!S.stillStart) S.stillStart = now;
+          if(now - S.stillStart > 3000){
+            S.calibrating = false;
+            S.grace = now + 1500; // krátká benevolence po kalibraci
+          }
+        }else{
+          S.stillStart = 0;
+        }
+        return;
+      }
+
+      if(now > S.grace){
+        if(mag > 2.2){ // pragmatický práh "zvednutí"
+          if(!S.lastMoveAt) S.lastMoveAt = now;
+          if(now - S.lastMoveAt > 300){ // 300 ms souvislého pohybu
+            lock("Detekován pohyb/zvednutí telefonu.");
+          }
+        }else{
+          S.lastMoveAt = 0;
+        }
+      }
+    };
+    window.addEventListener('devicemotion', motionHandler, { passive:true });
+  }
+  function detachSensors(){
+    window.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('online', onOnline);
+    if(motionHandler){
+      window.removeEventListener('devicemotion', motionHandler);
+      motionHandler = null;
+    }
+  }
+
+  async function start(){
+    if(S.active || S.locked) return;
+    // Podmínku OFFLINE necháváme – ale QR START běží ještě předtím (aby se mohl načíst fallback)
+    if(navigator.onLine){
+      try{ await fetch('about:blank',{mode:'no-cors'}); }catch{}
+      if(navigator.onLine){
+        ensureUI(); ui.overlay.style.display = 'grid';
+        ui.text.innerHTML = "Nejprve zapni <b>režim letadlo</b> (offline), pak to zkus znovu.";
+        setTimeout(()=>ui.overlay.style.display='none', 3000);
+        return;
+      }
+    }
+
+    // povolení pohybových senzorů (na iOS vyžaduje klik)
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      try {
+        const p = await DeviceMotionEvent.requestPermission();
+        if (p !== 'granted') {
+          ensureUI(); ui.overlay.style.display='grid';
+          ui.text.innerHTML = "Povolte přístup k pohybovým senzorům (pro dohled).";
+          setTimeout(()=>ui.overlay.style.display='none', 3000);
+          return;
+        }
+      } catch {}
+    }
+
+    S.active = true; S.locked = false; S.calibrating = true;
+    S.stillStart = 0; S.lastMoveAt = 0; S.grace = Date.now() + 1500; // chvilka na položení
+    attachSensors();
+
+    state.resultShown = true;
+    state.resultStr = " Polož telefon a nechej ho 3 s v klidu…";
+    render();
+  }
+
+  function finish(){
+    if(!S.active && !S.locked) return;
+    S.grace = Date.now() + 5000; // tolerance při ukončení
+    detachSensors();
+    S.active = false;
+    state.resultShown = true;
+    state.resultStr = "Zkouška ukončena.";
+    render();
+  }
+
+  return { start, finish, lock };
+})();
+
+// Hoist-safe definice (použitá v menu)
+function openTeacher(){
+  try{ window.open(TEACHER_URL, '_blank', 'noopener'); }catch(_){}
+}
+</script>
+
+<script>
 let state={ raw:'', cursor:0, ans:0, drg:'DEG', shift:false, hyp:false, eng:false,
             dmsDisplay:false, frac:false, fracMixed:true, memory:0, memOn:false,
             lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
-            modePick:false, repeat:null };
+            modeStage:0, repeat:null };
 
 /* ===== pretty + caret, auto scroll kurzoru ===== */
 function prettySegments(raw){
@@ -247,10 +482,9 @@ function render(){
   bDMS.classList.toggle('on',state.dmsDisplay);
   bMem.classList.toggle('on',state.memOn);
   bDRG.textContent=state.drg;
+  calcEl.classList.toggle('shift-on', state.shift);
 
-  if(state.modePick){
-    exprEl.innerHTML = '<span style="opacity:.9">1&nbsp;DEG&nbsp;&nbsp;&nbsp;2&nbsp;RAD&nbsp;&nbsp;&nbsp;3&nbsp;GRAD</span>';
-    resEl.textContent = '';
+  if(renderModeMenu()){
     return;
   }
 
@@ -316,16 +550,19 @@ function ac(hard=false){ state.raw=''; state.cursor=0; if(hard){ state.ans=0; } 
 
 /* ovládací prvky */
 onPD(qs('#btnSHIFT'), ()=>{
-  if(state.modePick){ state.modePick = false; }
+  if (state.modeStage > 0) { 
+    state.modeStage = 0; 
+    render(); 
+    return; 
+  }
   state.shift = !state.shift;
   render();
 });
 
 onPD(qs('#btnMODE'), ()=>{ 
   if(state.shift){ state.shift=false; state.ans=0; ac(true); return; }
-  state.modePick = true;
-  state.resultShown = false;
-  state.resultStr = '';
+  state.resultShown=false; state.resultStr='';
+  state.modeStage = (state.modeStage===0) ? 1 : (state.modeStage===1 ? 2 : 0);
   render();
 });
 
@@ -420,20 +657,6 @@ onPD(qs('#btnEq'), ()=>{
 });
 
 onPDAll('[data-act]', el=>{ const a=el.dataset.act; if(a==='del') back(); else if(a==='ac') ac(); });
-function handleModePick(d){
-  if(!state.modePick) return false;
-
-  if(d==='1')      state.drg='DEG';
-  else if(d==='2') state.drg='RAD';
-  else if(d==='3') state.drg='GRAD';
-  else return true;
-
-  state.modePick = false;
-  state.resultShown = false;
-  state.resultStr = '';
-  render();
-  return true;
-}
 
 function opAfterResult(sym){
   if(state.resultShown && !state.editAfterResult){
@@ -443,9 +666,10 @@ function opAfterResult(sym){
     insRaw(sym);
   }
 }
+
 onPDAll('[data-ins]', el=>{
   const t=el.dataset.ins;
-  if(state.modePick && /^[0-9]$/.test(t)){ handleModePick(t); return; }
+  if(state.modeStage>0 && /^[0-9]$/.test(t)){ handleMenuChoice(t); return; }
 
   if(t==='+'||t==='−'||t==='×'||t==='÷'){ opAfterResult(t); }
   else if(t==='('||t===')'||t===','||/^[0-9.]$/.test(t)){ insRaw(t); }
@@ -467,7 +691,7 @@ function normalizeInput(s){
   s=autoCloseUnary(s);
   s=autoCloseRoot(s);
 
-  const sep    = '[∟ɹL]';
+  const sep    = '[∟]'; // pouze náš symbol, žádné "L" apod.
   const mixRe  = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
   const fracRe = new RegExp(`(^|[^0-9.])(-?\\d+)${sep}(\\d+)(?![0-9.])`, 'g');
 
@@ -477,7 +701,8 @@ function normalizeInput(s){
     s = s.replace(mixRe,  (_m, pre, a, b, c) => `${pre}(${a}+(${b})/(${c}))`);
   } while (prev !== s);
 
-  s = s.replace(fracRe, (_m, pre, n, d) => `${pre}((${n})/(${d}))`);
+  s = s.replace(fracRe, (_m, pre, n, d) => `${pre}((
+${n})/(${d}))`);
   s = s.replace(/\s+/g,'');
 
   s=s.replace(/sin\^\(-1\)\(/g,'asin(').replace(/cos\^\(-1\)\(/g,'acos(').replace(/tan\^\(-1\)\(/g,'atan(');
@@ -764,7 +989,7 @@ function updateResultView(){
 }
 function evaluate(){
   try{
-    const hadSep = /[∟ɹL]/.test(state.raw);
+    const hadSep = /[∟]/.test(state.raw);
     const norm = normalizeInput(state.raw);
     const toks = tokenize(norm);
     const rpn  = toRPN(toks);
@@ -802,7 +1027,12 @@ addEventListener('keydown',e=>{
   if(k==='Escape'){e.preventDefault();ac();return;}
   if(k==='ArrowLeft'){e.preventDefault();moveCursor(-1);return;}
   if(k==='ArrowRight'){e.preventDefault();moveCursor(+1);return;}
-  if(/^[0-9]$/.test(k)){ if(state.modePick){ handleModePick(k); } else { insRaw(k); } return; }
+  if(/^[0-9]$/.test(k)){
+    if(state.modeStage>0){ handleMenuChoice(k); }
+    else { insRaw(k); }
+    return;
+  }
+
   if(k==='('||k===')'||k===','||k==='.'||k==='%'){insRaw(k);return;}
   if(k==='^'){opAfterResult('^');return;}
   if(k==='+'){opAfterResult('+');return;}
@@ -813,84 +1043,166 @@ addEventListener('keydown',e=>{
 });
 </script>
 
+<!-- Service Worker (bez pádu při chybě) -->
 <script>
-  // Registrace service workeru – co nejdřív po loadu
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js', { scope: './' }));
+    window.addEventListener('load', async () => {
+      try{ await navigator.serviceWorker.register('./sw.js', { scope: './' }); }
+      catch(e){ /* SW volitelný */ }
+    });
   }
 </script>
- <div id="qrBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);place-items:center;z-index:9999">
+
+<!-- QR overlay (statický náhled) -->
+<div id="qrBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);place-items:center;z-index:9999">
   <div style="background:#fff;border-radius:16px;padding:16px;color:#111;text-align:center">
     <img id="qrImg" src="./icons/qr.png?v=2" alt="QR kód" width="280" height="280">
     <div id="qrUrl" style="font:14px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto;margin-top:8px;word-break:break-all"></div>
-      </div>
+  </div>
 </div>
 <script>
 (() => {
-  // ochrana proti dvojité inicializaci
-  if (window.__qrInit) return;
-  window.__qrInit = true;
-
-  // elementy
+  if (window.__qrInit) return; window.__qrInit = true;
   const qrBackdrop = document.getElementById('qrBackdrop');
   const btnQR = document.getElementById('btnQR');
+  const qrUrl = document.getElementById('qrUrl');
 
-  // helpery
-  function isOpen() {
-    return qrBackdrop && qrBackdrop.style.display !== 'none';
-  }
+  function isOpen(){ return qrBackdrop && qrBackdrop.style.display !== 'none'; }
   function openQR(){
     if (!qrBackdrop) return;
     qrBackdrop.style.display = 'grid';
-    // přidej stav do historie, aby fungovalo tlačítko Zpět
+    if(qrUrl) qrUrl.textContent = location.href;
     if (location.hash !== '#qr') history.pushState({ qr: true }, '', '#qr');
   }
   function closeQR(){
     if (!qrBackdrop) return;
     qrBackdrop.style.display = 'none';
-    // když jsme na #qr, vrať historii, aby se hash uklidil
-    if (location.hash === '#qr') {
-      // použij back() – ať se chová správně i v PWA
-      history.back();
-    }
+    if (location.hash === '#qr') history.back();
   }
 
-  // otevřít po kliknutí na tlačítko
   btnQR && btnQR.addEventListener('pointerdown', openQR, { passive: true });
-
-  // zavřít klikem mimo bílý box (na tmavý backdrop)
-  qrBackdrop && qrBackdrop.addEventListener('pointerdown', (e) => {
-    if (e.target === qrBackdrop) closeQR();
-  }, { passive: true });
-
-  // zavřít klávesou Esc
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && isOpen()) closeQR();
-  });
-
-  // reaguj na tlačítko Zpět (změna historie)
-  window.addEventListener('popstate', () => {
-    // když hash už není #qr, jen se ujisti, že overlay je skrytý
-    if (location.hash !== '#qr' && qrBackdrop) qrBackdrop.style.display = 'none';
-  });
-
-  // DŮLEŽITÉ: při startu nikdy neotvírej QR, i kdyby zůstal hash z dřívějška
-  if (location.hash === '#qr') {
-    history.replaceState(null, '', location.pathname + location.search);
-    if (qrBackdrop) qrBackdrop.style.display = 'none';
-  }
+  qrBackdrop && qrBackdrop.addEventListener('pointerdown', (e) => { if (e.target === qrBackdrop) closeQR(); }, { passive: true });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen()) closeQR(); });
+  window.addEventListener('popstate', () => { if (location.hash !== '#qr' && qrBackdrop) qrBackdrop.style.display = 'none'; });
+  if (location.hash === '#qr') { history.replaceState(null, '', location.pathname + location.search); if (qrBackdrop) qrBackdrop.style.display = 'none'; }
 })();
 </script>
 
+<!-- QR SCANNER (START/END) -->
+<script>
+const QR = (()=> {
+  let overlay, video, note, running=false, stopCb=null;
+
+  function buildUI(){
+    if(overlay) return;
+    overlay = document.createElement('div');
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;z-index:99998;color:#fff";
+    const box = document.createElement('div');
+    box.style.cssText="position:absolute;inset:0;display:grid;place-items:center;padding:14px";
+    video = document.createElement('video');
+    video.setAttribute('playsinline','');
+    video.style.cssText="max-width:96vw;max-height:60vh;border:2px solid #7dd3fc;border-radius:12px;background:#000";
+    note = document.createElement('div');
+    note.style.cssText="margin-top:10px;font:600 16px/1.4 system-ui,Segoe UI,Roboto;text-align:center";
+    const btnX=document.createElement('button');
+    btnX.textContent="Zavřít";
+    btnX.onclick = stop;
+    btnX.style.cssText="position:absolute;top:10px;right:10px;background:#ef4444;border:none;color:#fff;padding:8px 12px;border-radius:8px";
+    box.appendChild(video); box.appendChild(note); overlay.appendChild(box); overlay.appendChild(btnX);
+    document.body.appendChild(overlay);
+  }
+
+  async function ensureFallback(){
+    if('BarcodeDetector' in window) return null;
+    if(window.ZXing) return window.ZXing;
+    // Preferuj lokální build (funguje i offline v PWA). Pokud chybí, poslední šance CDN.
+    try {
+      await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src="./vendor/zxing.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+      return window.ZXing;
+    } catch(_) {
+      await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+      return window.ZXing;
+    }
+  }
+
+  async function start(kind){ // kind: 'START' | 'END'
+    if(running) return;
+    buildUI();
+    overlay.style.display='block';
+    note.textContent = kind==='START' ? "Namiřte na START QR…" : "Namiřte na END QR…";
+    running=true;
+
+    let stream=null;
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
+    }catch(e){
+      note.textContent = "Kameru se nepodařilo otevřít. Povolte přístup kameře.";
+      running=false; return;
+    }
+    video.srcObject = stream; await video.play();
+
+    const useBD = ('BarcodeDetector' in window);
+    let detector = null;
+    if(useBD){ detector = new BarcodeDetector({ formats: ['qr_code'] }); }
+    else { await ensureFallback(); }
+
+    let raf=0;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently:true });
+
+    async function tick(){
+      if(!running) return;
+      try{
+        let text=null;
+        if(useBD){
+          const codes = await detector.detect(video);
+          if(codes && codes[0]) text = codes[0].rawValue || codes[0].rawValueText || codes[0].rawValueString;
+        }else if(window.ZXing){
+          canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0,0, canvas.width, canvas.height);
+          const lumin = ZXing.BinaryBitmap.fromUint8Array(
+            ZXing.RGBLuminanceSource.fromCanvas(canvas).matrix
+          );
+          const res = new ZXing.MultiFormatReader().decode(lumin);
+          if(res) text = res.getText && res.getText();
+        }
+
+        if(text){
+          try{
+            const outer = JSON.parse(text);
+            const inner = JSON.parse(outer.payload);
+            const now = Math.floor(Date.now()/1000);
+            if(inner.ts && inner.expSec && (now > inner.ts + inner.expSec)){
+              note.textContent = "QR je propadlý. Vygenerujte nový.";
+            }else{
+              stop();
+              if((inner.type||'START') === 'START') ExamGuard.start();
+              else ExamGuard.finish();
+            }
+            return;
+          }catch(_e){ /* nepodporovaný formát – pokračuj */ }
+        }
+      }catch(_){ /* ignoruj */ }
+      raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+
+    stopCb = ()=>{
+      cancelAnimationFrame(raf);
+      if(stream){ stream.getTracks().forEach(t=>t.stop()); }
+      overlay.style.display='none';
+      running=false;
+    };
+  }
+
+  function stop(){ if(stopCb) stopCb(); }
+
+  return { start, stop };
+})();
+
+function startExamScan(){ QR.start('START'); }
+function endExamScan(){   QR.start('END'); }
+</script>
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
