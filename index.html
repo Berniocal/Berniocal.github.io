@@ -694,54 +694,6 @@ async function start(code){
 }
 
 
-// Povolení pohybových senzorů (iOS vyžaduje klik/povolení)
-if (typeof DeviceMotionEvent !== 'undefined' &&
-    typeof DeviceMotionEvent.requestPermission === 'function') {
-  try {
-    const p = await DeviceMotionEvent.requestPermission();
-    if (p !== 'granted') {
-      ensureUI();
-      ui.overlay.style.display = 'grid';
-      ui.text.innerHTML = "Povolte přístup k pohybovým senzorům (pro dohled).";
-      setTimeout(() => ui.overlay.style.display = 'none', 3000);
-      return;
-    }
-  } catch {}
-}
-
-// (PŘIDEJ) iOS může chtít i povolení pro DeviceOrientationEvent
-if (typeof DeviceOrientationEvent !== 'undefined' &&
-    typeof DeviceOrientationEvent.requestPermission === 'function') {
-  try { await DeviceOrientationEvent.requestPermission(); } catch {}
-}
-
-
-  // Aktivace režimu a příprava senzorů
-  S.active = true;
-  S.locked = false;
-  S.calibrating = true;
-  S.code = String(code || '').toUpperCase().slice(0, 3);
-// Krátké potvrzení pro žáka
-ensureUI();
-ui.overlay.style.display = 'grid';
-ui.text.innerHTML = `Test mód zapnut (${S.code || '---'})`;
-setTimeout(() => { if (ui && ui.overlay) ui.overlay.style.display = 'none'; }, 800);
-
-  // Zapni TEST UI (růžové pozadí + badge s kódem vpravo nahoře)
-  state.examActive = true;
-  state.examCode = S.code;
-  updateExamUI();
-
-  S.stillStart = 0;
-  S.lastMoveAt = 0;
-  S.grace = Date.now() + 1500; // krátká benevolence po položení
-  attachSensors();
-
-  // Info na displej
-  state.resultShown = true;
-  state.resultStr = " Polož telefon a nechej ho 3 s v klidu…";
-  render();
-}
 
 // === PŘEPSAT: function finish() ===
 function finish(){
@@ -1804,6 +1756,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
