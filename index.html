@@ -27,7 +27,10 @@
   .menu-bot{ font-size: clamp(16px,3.8vw,20px); font-weight:700 }
   .menu-grid{ display:flex; justify-content:space-between; padding:0 6px }
   .menu-grid span{ min-width: 30%; text-align:center }
-
+  .modegrid{ display:flex; justify-content:space-between; gap:12px; padding:0 6px }
+  .modecell{ min-width:30%; text-align:center; font-weight:700; }
+  .modecell .label{ font-size:clamp(24px,6.2vw,33px); line-height:1.15 }
+  .modecell .num{ font-size:.9em; opacity:.9; margin-top:.1em }
   .calc{
     width:min(480px,100vw);
     height:auto;
@@ -72,7 +75,7 @@
   .botgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap);grid-auto-rows:minmax(64px,auto);} 
 
   .oval{background:var(--oval);color:#263445;border-radius:18px;padding:.6em .2em;text-align:center;font-weight:700;box-shadow:var(--shadow);touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}
-  #btnSHIFT{color:var(--shift)} #btnALPHA{color:var(--alpha)} #btnFS{font-weight:800}
+  #btnSHIFT{color:#b08c00} #btnALPHA{color:var(--alpha)} #btnFS{font-weight:800}
   .replay{background:#bfcbd9;color:#3b4b5c;border-radius:999px;font-size:20px}
   .span2{grid-row:span 2}
 
@@ -117,7 +120,7 @@
       <button class="oval" id="btnQR">QR</button>
       <button class="oval replay span2" id="btnLeft">◀</button>
       <button class="oval replay span2" id="btnRight">▶</button>
-      <button class="oval" id="btnMODE"><span class="legend">CLR</span><span class="main">MODE</span></button>
+      <button class="oval" id="btnMODE"><span class="main">MODE</span></button>
       <button class="oval" id="btnFS">⛶</button>
 
       <button class="key fn" id="btnInv"><span class="legend">x!</span><span class="main">x⁻¹</span></button>
@@ -236,20 +239,27 @@ const TEACHER_URL = "https://berniocal.github.io/teacher.html"; // jediný zdroj
 function renderModeMenu(){
   if(state.modeStage===1){
     exprEl.innerHTML =
-      '<div class="menu-grid menu-top"><span>1</span><span>2</span><span>3</span></div>';
-    resEl.innerHTML  =
-      '<div class="menu-grid menu-bot"><span>DEG</span><span>RAD</span><span>GRAD</span></div>';
+      '<div class="modegrid">' +
+        '<div class="modecell"><div class="label">Deg</div><div class="num">1</div></div>' +
+        '<div class="modecell"><div class="label">Rad</div><div class="num">2</div></div>' +
+        '<div class="modecell"><div class="label">Gra</div><div class="num">3</div></div>' +
+      '</div>';
+    resEl.innerHTML = ''; // nic dole
     return true;
   }
   if(state.modeStage===2){
     exprEl.innerHTML =
-      '<div class="menu-grid menu-top"><span>1</span><span>2</span><span>3</span></div>';
-    resEl.innerHTML  =
-      '<div class="menu-grid menu-bot"><span>EXAM&nbsp;START</span><span>EXAM&nbsp;END</span><span>TEACHER</span></div>';
+      '<div class="modegrid">' +
+        '<div class="modecell"><div class="label">ExS</div><div class="num">1</div></div>' +
+        '<div class="modecell"><div class="label">ExE</div><div class="num">2</div></div>' +
+        '<div class="modecell"><div class="label">Tea</div><div class="num">3</div></div>' +
+      '</div>';
+    resEl.innerHTML = ''; // nic dole
     return true;
   }
   return false;
 }
+
 
 // akce menu čísel 1/2/3
 function handleMenuChoice(digit){
@@ -749,7 +759,15 @@ onPDAll('[data-trig]', el=>{
 });
 
 onPD(qs('#btn0'),  ()=>{ if(state.shift){ state.shift=false; insRaw('Rnd(');} else insRaw('0'); });
-onPD(qs('#btnDot'),()=>{ if(state.shift){ state.shift=false; insRaw('RAN#()');} else insRaw('.'); });
+onPD(qs('#btnDot'),()=>{
+  if(state.shift){
+    state.shift=false;
+    insRaw('RAN#');       // bez závorek
+  } else {
+    insRaw('.');
+  }
+});
+
 onPD(qs('#btnEXP'),()=>{ if(state.shift){ state.shift=false; insRaw('π'); } else insRaw('E'); });
 onPD(qs('#btnAns'),()=>{ if(state.shift){ state.shift=false; state.drg = state.drg==='DEG'?'RAD':state.drg==='RAD'?'GRAD':'DEG'; if(state.resultShown) updateResultView(); render(); } else insRaw('Ans'); });
 onPD(qs('#btnEq'), ()=>{ 
@@ -798,6 +816,7 @@ function captureRepeat(tokens){
 /* ===== parser ===== */
 function normalizeInput(s){
   s=s.replace(/\s+/g,'').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+  s = s.replace(/RAN#(?!\s*\()/g, 'RAN#()'); // RAN# → RAN#() pokud nemá ( )
   s=autoCloseUnary(s);
   s=autoCloseRoot(s);
 
@@ -1088,10 +1107,23 @@ function toFractionStr(x, mixed=true, maxDen=1e6){
   return (sign<0?'-':'') + body;
 }
 function degToDMS(x){
-  const s=x<0?-1:1; x=Math.abs(x);
-  const d=Math.floor(x), mf=(x-d)*60, m=Math.floor(mf), sec=Math.round((mf-m)*60*1e6)/1e6;
-  return (s<0?'-':'')+d+'°'+m+'′'+stripZeros(String(sec))+'″';
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+
+  let d = Math.floor(x);
+  let mf = (x - d) * 60;
+  let m = Math.floor(mf);
+  let s = (mf - m) * 60;
+
+  // zaokrouhlení sekund + normalizace přenosu 60″ → +1′, 60′ → +1°
+  s = Math.round(s * 1e6) / 1e6;         // přesnost na 1e-6 s
+  if (s >= 60) { s -= 60; m += 1; }
+  if (m >= 60) { m -= 60; d += 1; }
+
+  const prefix = sign < 0 ? '-' : '';
+  return prefix + d + '°' + m + '′' + stripZeros(String(s)) + '″';
 }
+
 function dmsToDeg(d,m,s){ const sign=d<0?-1:1; d=Math.abs(d); return sign*(d+m/60+s/3600); }
 
 function formatNumWithOptions(v){
@@ -1357,6 +1389,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
