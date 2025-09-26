@@ -27,10 +27,26 @@
   .menu-bot{ font-size: clamp(16px,3.8vw,20px); font-weight:700 }
   .menu-grid{ display:flex; justify-content:space-between; padding:0 6px }
   .menu-grid span{ min-width: 30%; text-align:center }
-  .modegrid{ display:flex; justify-content:space-between; gap:12px; padding:0 6px }
-  .modecell{ min-width:30%; text-align:center; font-weight:700; }
-  .modecell .label{ font-size:clamp(24px,6.2vw,33px); line-height:1.15 }
-  .modecell .num{ font-size:.9em; opacity:.9; margin-top:.1em }
+.modegrid{
+  display:grid; grid-template-columns: 1fr 1fr 1fr;
+  gap:0; padding:0 2px;
+}
+.modecell{ font-weight:700; }
+.modecell:nth-child(1){ text-align:left; }
+.modecell:nth-child(2){ text-align:center; }
+.modecell:nth-child(3){ text-align:right; }
+.modecell .label{
+  font-size:clamp(24px,6.2vw,33px); line-height:1.15;
+}
+.modecell .num{
+  display:block;
+  font-size:clamp(16px,3.8vw,20px);
+  opacity:.9;
+  margin-top:.05em;
+  /* jistota, že nejsou „šedé dlaždice“ */
+  background:transparent; box-shadow:none; border:none; border-radius:0; padding:0; display:block;
+}
+
   .calc{
     width:min(480px,100vw);
     height:auto;
@@ -40,12 +56,13 @@
     display:grid; grid-template-rows:auto auto; gap:12px;
     transform-origin: top center;
   }
-  .display{
-    background:var(--lcd); color:var(--lcd-text); border-radius:10px;
-    padding:12px 14px; box-shadow:inset 0 3px 4px rgba(0,0,0,.25);
-    font-family:ui-monospace,Menlo,Consolas,monospace;
-    display:grid; grid-template-rows:auto auto; gap:6px;
-  }
+.display{
+  background:var(--lcd); color:var(--lcd-text); border-radius:10px;
+  padding:12px 14px; box-shadow:inset 0 3px 4px rgba(0,0,0,.25);
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+  display:grid; grid-template-rows:auto auto; gap:6px;
+  position:relative; /* umožní absolutní umístění badge */
+}
   #exprWrap{
     font-size:clamp(24px,6.2vw,33px);
     line-height:1.6;
@@ -56,9 +73,18 @@
   }
   #expr{display:inline-block; white-space:nowrap; padding-right:8px;}
   .line2{display:flex; align-items:center; gap:8px; min-height:1.8em}
-  .badges{display:flex;gap:6px;flex-wrap:wrap}
-  .badge{background:#243444;border:1px solid #2e455a;color:#e7fbff;border-radius:7px;padding:2px 6px;font-size:.9em;user-select:none}
-  .badge.auto{display:none}.badge.auto.on{display:inline-flex}.badge.always{display:inline-flex}
+.badges{
+  position:absolute; top:4px; left:8px; right:8px;
+  display:flex; gap:8px; flex-wrap:wrap; pointer-events:none;
+}
+.badge{
+  background:transparent; border:none; color:#1b2b3b;
+  border-radius:0; padding:0; font-size:.8em; line-height:1; user-select:none;
+}
+.badge.auto{display:none}
+.badge.auto.on{display:inline-flex}
+.badge.always{display:inline-flex}
+
   .res{
   margin-left:auto;
   font-size:clamp(24px,6.6vw,34px);
@@ -244,7 +270,7 @@ function renderModeMenu(){
         '<div class="modecell"><div class="label">Rad</div><div class="num">2</div></div>' +
         '<div class="modecell"><div class="label">Gra</div><div class="num">3</div></div>' +
       '</div>';
-    resEl.innerHTML = ''; // nic dole
+    resEl.innerHTML = '';
     return true;
   }
   if(state.modeStage===2){
@@ -254,11 +280,12 @@ function renderModeMenu(){
         '<div class="modecell"><div class="label">ExE</div><div class="num">2</div></div>' +
         '<div class="modecell"><div class="label">Tea</div><div class="num">3</div></div>' +
       '</div>';
-    resEl.innerHTML = ''; // nic dole
+    resEl.innerHTML = '';
     return true;
   }
   return false;
 }
+
 
 
 // akce menu čísel 1/2/3
@@ -1389,6 +1416,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
