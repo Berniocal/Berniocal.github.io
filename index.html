@@ -52,11 +52,18 @@
     position:relative;
   }
   #expr{display:inline-block; white-space:nowrap; padding-right:8px;}
-  .line2{display:flex; align-items:center; gap:8px}
+  .line2{display:flex; align-items:center; gap:8px; min-height:1.8em}
   .badges{display:flex;gap:6px;flex-wrap:wrap}
   .badge{background:#243444;border:1px solid #2e455a;color:#e7fbff;border-radius:7px;padding:2px 6px;font-size:.9em;user-select:none}
   .badge.auto{display:none}.badge.auto.on{display:inline-flex}.badge.always{display:inline-flex}
-  .res{margin-left:auto; font-size:clamp(24px,6.6vw,34px); font-weight:700; text-align:right; min-width:40%}
+  .res{
+  margin-left:auto;
+  font-size:clamp(24px,6.6vw,34px);
+  font-weight:700;
+  text-align:right;
+  min-width:40%;
+  min-height:1.2em; /* rezervuje vertikální místo pro výsledek */
+}
   .res .sci .times, .res .sci .ten{ font-size:.8em; }
   .res .sci sup.exp{ font-size:.5em; vertical-align:super; }
 
@@ -583,13 +590,57 @@ onPD(qs('#btnFS'), ()=>{
 });
 
 /* funkční klávesy */
-onPD(qs('#btnInv'), ()=>{ clearForNewEntry(); if(state.shift){ state.shift=false; if(state.cursor>0 && /[0-9\)]/.test(state.raw[state.cursor-1])) insRaw('!'); else insRaw('fact(');} else insRaw('^(-1)'); });
+onPD(qs('#btnInv'), ()=>{
+  if(state.resultShown && !state.editAfterResult){
+    // Po "=", držíme výsledek zobrazený a stavíme na Ans
+    state.editAfterResult = true;
+    if(state.shift){
+      state.shift = false;
+      state.raw = 'Ans!';              // faktorál Ans
+      state.cursor = state.raw.length;
+      render();
+    } else {
+      state.raw = 'Ans^(-1)';          // převrácená hodnota Ans
+      state.cursor = state.raw.length;
+      render();
+    }
+    return;
+  }
+  // běžné chování při editaci výrazu
+  clearForNewEntry();
+  if(state.shift){
+    state.shift=false;
+    if(state.cursor>0 && /[0-9\)]/.test(state.raw[state.cursor-1])) insRaw('!');
+    else insRaw('fact(');
+  } else {
+    insRaw('^(-1)');
+  }
+});
+
 
 function insertCP(op){ if(state.resultShown && !state.editAfterResult) return; if(state.cursor===0 || !/[0-9]/.test(state.raw[state.cursor-1])) return; insRaw(op); }
 onPD(qs('#btnComb'),()=>{ if(state.shift){ state.shift=false; insertCP('P'); } else insertCP('C'); });
 
 onPD(qs('#btnPolRec'),()=>{ clearForNewEntry(); if(state.shift){ state.shift=false; insRaw('Rec(');} else insRaw('Pol('); });
-onPD(qs('#btnPow3'),()=>{ clearForNewEntry(); if(state.shift){ state.shift=false; insRaw('cbrt(');} else insRaw('^(3)'); });
+onPD(qs('#btnPow3'),()=>{
+  if(state.resultShown && !state.editAfterResult){
+    state.editAfterResult = true;
+    if(state.shift){
+      state.shift=false;
+      state.raw = 'cbrt(Ans)';        // ∛(Ans)
+      state.cursor = state.raw.length;
+      render();
+    } else {
+      state.raw = 'Ans^(3)';          // Ans^3
+      state.cursor = state.raw.length;
+      render();
+    }
+    return;
+  }
+  clearForNewEntry();
+  if(state.shift){ state.shift=false; insRaw('cbrt(');} else insRaw('^(3)');
+});
+
 onPD(qs('#btnFracKey'), ()=>{
   if(state.resultShown){
     if(state.shift){
@@ -610,7 +661,18 @@ onPD(qs('#btnFracKey'), ()=>{
 });
 
 onPD(qs('#btnSqrt'),()=>{ clearForNewEntry(); insRaw('sqrt('); });
-onPD(qs('#btnPow2'),()=>{ clearForNewEntry(); insRaw('^(2)'); });
+onPD(qs('#btnPow2'),()=>{
+  if(state.resultShown && !state.editAfterResult){
+    state.editAfterResult = true;
+    state.raw = 'Ans^(2)';            // Ans^2
+    state.cursor = state.raw.length;
+    render();
+    return;
+  }
+  clearForNewEntry();
+  insRaw('^(2)');
+});
+
 
 onPD(qs('#btnPow'), ()=>{ 
   if(state.shift){
@@ -624,7 +686,42 @@ onPD(qs('#btnPow'), ()=>{
 onPD(qs('#btnHYP'), ()=>{ state.hyp=!state.hyp; render(); });
 onPD(qs('#btnNeg'), ()=> insRaw('−'));
 
-onPD(qs('#btnDMSsym'),()=>{ if(state.resultShown && !state.editAfterResult){ state.dmsDisplay=!state.dmsDisplay; updateResultView(); } else { if(state.shift&&state.hyp){ state.shift=false; insRaw('″'); } else if(state.shift){ state.shift=false; insRaw('′'); } else insRaw('°'); }});
+onPD(qs('#btnDMSsym'),()=>{
+  // Pokud je zobrazen výsledek a nezačali jsme editovat, přepínej DMS <-> desetinný
+  if(state.resultShown && !state.editAfterResult){
+    state.dmsDisplay = !state.dmsDisplay;
+    updateResultView();
+    return;
+  }
+
+  // Při běžném psaní: chytré vkládání °, ′, ″
+  const before = state.raw.slice(0, state.cursor);
+  const lastDeg = before.lastIndexOf('°');
+  const lastMin = before.lastIndexOf('′');
+  const lastSec = before.lastIndexOf('″');
+
+  // SHIFT může vynutit konkrétní symboly jako dřív
+  if(state.shift && state.hyp){ state.shift=false; insRaw('″'); return; }
+  if(state.shift){ state.shift=false; insRaw('′'); return; }
+
+  // 1) ještě nebyl symbol "°" → vlož "° " (se zarážkou na další čísla)
+  if(lastDeg === -1){
+    insRaw('° ');
+    return;
+  }
+  // 2) máme "°", ale ne "′" za posledním "°" → vlož "′ "
+  if(lastMin < lastDeg){
+    insRaw('′ ');
+    return;
+  }
+  // 3) máme i "′", ale ne "″" za posledním "′" → vlož "″"
+  if(lastSec < lastMin){
+    insRaw('″');
+    return;
+  }
+  // 4) kompletní trojice už je – začni novou DMS sekvenci (další "° ")
+  insRaw(' ° ');
+});
 
 onPD(qs('#btnRCLSTO'),()=>{ if(state.shift){ state.shift=false; state.memory= +state.ans || 0; state.memOn=state.memory!==0; render(); } else insRaw(String(state.memory)); });
 onPD(qs('#btnENG'),()=>{ state.eng=!state.eng; if(state.resultShown) updateResultView(); render(); });
@@ -660,12 +757,16 @@ onPDAll('[data-act]', el=>{ const a=el.dataset.act; if(a==='del') back(); else i
 
 function opAfterResult(sym){
   if(state.resultShown && !state.editAfterResult){
-    state.resultShown=false; state.resultStr='';
-    state.raw='Ans'+sym; state.cursor=state.raw.length; render(); 
-  }else{
+    // Necháme výsledek viditelný, jen začneme nový výraz "Ans <op>"
+    state.editAfterResult = true;
+    state.raw = 'Ans' + sym;
+    state.cursor = state.raw.length;
+    render();
+  } else {
     insRaw(sym);
   }
 }
+
 
 onPDAll('[data-ins]', el=>{
   const t=el.dataset.ins;
@@ -990,7 +1091,9 @@ function updateResultView(){
 function evaluate(){
   try{
     const hadSep = /[∟]/.test(state.raw);
-    const norm = normalizeInput(state.raw);
+const hadDMS = /[°′″]/.test(state.raw);
+const norm = normalizeInput(state.raw);
+
     const toks = tokenize(norm);
     const rpn  = toRPN(toks);
     let res    = evalRPN(rpn);
@@ -1004,10 +1107,14 @@ function evaluate(){
     }
 
     if(hadSep){ state.frac=true; state.fracMixed=true; }
-    else { state.frac=false; }
+else { state.frac=false; }
 
-    state.editAfterResult=false;
-    updateResultView();
+// Pokud uživatel psal DMS, ukaž výsledek rovnou ve stupních-minutách-vteřinách
+if(hadDMS){ state.dmsDisplay = true; }
+
+state.editAfterResult=false;
+updateResultView();
+
   }catch(_){
     state.lastRes=null; state.resultStr='Error';
     state.resultShown=true; state.editAfterResult=false; state.repeat=null; render();
@@ -1206,3 +1313,4 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
