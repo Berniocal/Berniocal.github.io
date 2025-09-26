@@ -28,32 +28,37 @@
   .menu-grid{ display:flex; justify-content:space-between; padding:0 6px }
   .menu-grid span{ min-width: 30%; text-align:center }
 /* MODE – horní řádek: tři nápisy vlevo/na střed/vpravo, bez změny výšky */
+/* Horní MODE řádek – přesná L|C|R mřížka, velké jako zadávací text */
 .modebar{
-  display:flex;
-  justify-content:space-between;
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr;
   align-items:center;
   width:100%;
-  margin:0; padding:0; /* žádné extra mezery */
+  margin:0; padding:0;
 }
 .modebar .label{
   font-size:clamp(24px,6.2vw,33px);
   line-height:1.15;
   margin:0; padding:0;
 }
+.modebar .label:nth-child(1){ justify-self:start; }
+.modebar .label:nth-child(2){ justify-self:center; }
+.modebar .label:nth-child(3){ justify-self:end; }
 
-/* MODE – spodní řádek: 1 / 2 / 3 vlevo/na střed/vpravo */
+/* Spodní MODE řádek – 1|2|3, velikost zdědí z .res (tj. stejná jako výsledky) */
 .numrow{
-  display:flex;
-  justify-content:space-between;
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr;
   align-items:center;
   width:100%;
   margin:0; padding:0;
+  text-align:initial;      /* zrušíme pravé zarovnání z .res */
+  font-size:inherit;       /* ← klíčové: převezme clamp z .res */
 }
-.numrow span{
-  font-size:clamp(16px,3.8vw,20px);
-  line-height:1.1;
-  margin:0; padding:0;
-}
+.numrow span:nth-child(1){ justify-self:start; }
+.numrow span:nth-child(2){ justify-self:center; }
+.numrow span:nth-child(3){ justify-self:end; }
+
 
 
   .calc{
@@ -79,8 +84,7 @@
     white-space:nowrap;
     overflow:hidden;
     position:relative;
-  }
-  #expr{display:inline-block; white-space:nowrap; padding-right:8px;}
+ #expr{display:block; width:100%; white-space:nowrap; padding-right:8px;}
   .line2{display:flex; align-items:center; gap:8px; min-height:1.8em}
 .badges{
   position:absolute; top:4px; left:8px; right:8px;
@@ -94,14 +98,16 @@
 .badge.auto.on{display:inline-flex}
 .badge.always{display:inline-flex}
 
-  .res{
+.res{
+  display:block;            /* ← přidáno: řádek má celou šířku */
   margin-left:auto;
   font-size:clamp(24px,6.6vw,34px);
   font-weight:700;
-  text-align:right;
+  text-align:right;         /* běžně chceme výsledek vpravo; v MODE si uvnitř přepíšeme */
   min-width:40%;
-  min-height:1.2em; /* rezervuje vertikální místo pro výsledek */
+  min-height:1.2em;
 }
+
   .res .sci .times, .res .sci .ten{ font-size:.8em; }
   .res .sci sup.exp{ font-size:.5em; vertical-align:super; }
 
@@ -1430,6 +1436,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
