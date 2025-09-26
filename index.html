@@ -61,9 +61,12 @@
 .numrow span:nth-child(3){ justify-self:end; }
 /* === MODE speciální layout pro spodní řádek s čísly === */
 .res.mode{
-  text-align:initial;   /* zruší pravé zarovnání jen v MODE */
+  display:block;       /* v MODE nechceme flex-justify vpravo */
+  text-align:initial;
   margin-left:0;
   min-width:100%;
+  height:1.34em;       /* stejná FIXNÍ výška jako běžný výsledek */
+  overflow:hidden;
 }
 
 .res.mode .numrow{
@@ -71,14 +74,12 @@
   grid-template-columns: 1fr 1fr 1fr;
   align-items:center;
   width:100%;
+  height:100%;         /* vyplň celý řádek */
 }
 
 .res.mode .numrow span:nth-child(1){ justify-self:start; }
 .res.mode .numrow span:nth-child(2){ justify-self:center; }
 .res.mode .numrow span:nth-child(3){ justify-self:end; }
-
-
-
 
   .calc{
     width:min(480px,100vw);
@@ -98,8 +99,8 @@
 }
 #exprWrap{
   font-size:clamp(26px,7vw,36px);  /* o kousek větší než dřív */
-  line-height:1.32;
-  min-height:1.48em;
+  line-height:1.28;
+  min-height:1.46em;
   white-space:nowrap;
   overflow:hidden;
   position:relative;
@@ -107,7 +108,7 @@
 
   #expr{display:block; width:100%; white-space:nowrap; padding-right:8px;}
 
-  .line2{display:flex; align-items:center; gap:8px; min-height:1.38em}
+  .line2{display:flex; align-items:center; gap:8px; min-height:1.34em}
 
   .badges{
     position:absolute; top:4px; left:8px; right:8px;
@@ -122,15 +123,18 @@
   .badge.always{display:inline-flex}
 
 .res{
-  display:block;
+  display:flex;                   /* aby sup/exp nevytahoval řádek */
+  align-items:center;
+  justify-content:flex-end;       /* výsledek vpravo (mimo MODE) */
   margin-left:auto;
   font-size:clamp(26px,7.2vw,36px);
-  line-height:1.32;     /* stejné jako nahoře */
+  line-height:1.2;
   font-weight:700;
-  text-align:right;
   min-width:40%;
-  min-height:1.1em;     /* o chlup menší */
+  height:1.34em;                  /* FIXNÍ výška řádku výsledku */
+  overflow:hidden;                /* nic nevyleze ven */
 }
+
 
 
   .res .sci .times, .res .sci .ten{ font-size:.8em; }
@@ -1489,6 +1493,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
