@@ -45,6 +45,10 @@ self.addEventListener('activate', (event) => {
     await self.clients.claim();
   })());
 });
+// Okamžitá aktivace na požádání z UI
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 
 // FETCH – navigace cache-first + tichá obnova; ostatní SWR
 self.addEventListener('fetch', (event) => {
@@ -90,6 +94,7 @@ self.addEventListener('fetch', (event) => {
     return cached || network || Response.error();
   })());
 });
+
 
 
 
