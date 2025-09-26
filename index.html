@@ -446,53 +446,139 @@ function alertBuzzer(){
     if(navigator.onLine){ lock("Zařízení je online (wifi/data)."); }
   }
 
-  let motionHandler = null;
-  function attachSensors(){
-    window.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('online', onOnline);
-    motionHandler = (ev) => {
-      if(!S.active) return;
-      const a = ev.accelerationIncludingGravity || ev.acceleration || {};
-      const ax = Math.abs(a.x||0), ay = Math.abs(a.y||0), az = Math.abs(a.z||0);
-      const mag = Math.sqrt(ax*ax + ay*ay + az*az);
+// === Motion + Orientation senzory (s fallbackem) ===
+let motionHandler = null;
+let orientHandler = null;
+let motionSeenTimer = null;
+let motionEverSeen = false;
 
-      const now = Date.now();
+function attachSensors(){
+  window.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('online', onOnline);
 
-      if(S.calibrating){
-        const still = mag < 0.15; // velmi klidné
-        if(still){
-          if(!S.stillStart) S.stillStart = now;
-          if(now - S.stillStart > 3000){
-            S.calibrating = false;
-            S.grace = now + 1500; // krátká benevolence po kalibraci
-          }
-        }else{
-          S.stillStart = 0;
+  // Primární: devicemotion (akcelerometr)
+  motionHandler = (ev) => {
+    if (!S.active) return;
+    motionEverSeen = true;
+
+    const a = ev.accelerationIncludingGravity || ev.acceleration || {};
+    const ax = Math.abs(a.x || 0), ay = Math.abs(a.y || 0), az = Math.abs(a.z || 0);
+    const mag = Math.sqrt(ax*ax + ay*ay + az*az);
+
+    const now = Date.now();
+
+    // Kalibrace – čekáme, až se telefon položí a zůstane 3 s v klidu
+    if (S.calibrating) {
+      const still = mag < 0.15;
+      if (still) {
+        if (!S.stillStart) S.stillStart = now;
+        if (now - S.stillStart > 3000) {
+          S.calibrating = false;
+          S.grace = now + 1500; // benevolence po kalibraci
         }
-        return;
+      } else {
+        S.stillStart = 0;
       }
-
-      if(now > S.grace){
-        if(mag > 2.2){ // pragmatický práh "zvednutí"
-          if(!S.lastMoveAt) S.lastMoveAt = now;
-          if(now - S.lastMoveAt > 300){ // 300 ms souvislého pohybu
-            lock("Detekován pohyb/zvednutí telefonu.");
-          }
-        }else{
-          S.lastMoveAt = 0;
-        }
-      }
-    };
-    window.addEventListener('devicemotion', motionHandler, { passive:true });
-  }
-  function detachSensors(){
-    window.removeEventListener('visibilitychange', onVisibility);
-    window.removeEventListener('online', onOnline);
-    if(motionHandler){
-      window.removeEventListener('devicemotion', motionHandler);
-      motionHandler = null;
+      return;
     }
+
+    // Po grace okně detekujeme "zvednutí" – souvislý silnější pohyb
+    if (now > S.grace) {
+      if (mag > 2.2) {                 // práh zrychlení
+        if (!S.lastMoveAt) S.lastMoveAt = now;
+        if (now - S.lastMoveAt > 300) { // 300 ms v kuse
+          lock("Detekován pohyb/zvednutí telefonu.");
+        }
+      } else {
+        S.lastMoveAt = 0;
+      }
+    }
+  };
+  window.addEventListener('devicemotion', motionHandler, { passive:true });
+
+  // Pokud nepřijde žádný devicemotion event, přepneme se na orientation fallback
+  motionEverSeen = false;
+  if (motionSeenTimer) clearTimeout(motionSeenTimer);
+  motionSeenTimer = setTimeout(() => {
+    if (!motionEverSeen) attachOrientationFallback();
+  }, 1800);
+}
+
+function attachOrientationFallback(){
+  // Fallback: deviceorientation (změny náklonu v °)
+  let base = null;
+  let lastExceedAt = 0;
+
+  orientHandler = (ev) => {
+    if (!S.active) return;
+    const now = Date.now();
+
+    // Použijeme beta (pitch) + gamma (roll). Některé prohlížeče negují osy – nepotřebujeme absolutní orientaci,
+    // jen relativní změnu od "položeného" stavu => pracujeme s rozdíly.
+    const beta  = (typeof ev.beta  === 'number') ? ev.beta  : 0; // -180..180
+    const gamma = (typeof ev.gamma === 'number') ? ev.gamma : 0; //  -90.. 90
+
+    if (S.calibrating) {
+      // během kalibrace si jen držíme základ a sledujeme klid (malé změny)
+      if (!base) base = { beta, gamma };
+      const dBeta  = beta  - base.beta;
+      const dGamma = gamma - base.gamma;
+      const delta  = Math.hypot(dBeta, dGamma);
+
+      const still = delta < 2; // ~2°
+      if (still) {
+        if (!S.stillStart) S.stillStart = now;
+        if (now - S.stillStart > 3000) {
+          S.calibrating = false;
+          S.grace = now + 1500;
+        }
+      } else {
+        S.stillStart = 0;
+        base = { beta, gamma };
+      }
+      return;
+    }
+
+    if (!base) base = { beta, gamma };
+
+    // Po kalibraci: větší změna náklonu = zvednutí
+    const dBeta  = beta  - base.beta;
+    const dGamma = gamma - base.gamma;
+    const delta  = Math.hypot(dBeta, dGamma); // velikost změny v °
+
+    if (now > S.grace) {
+      if (delta > 14) {                 // ~14° a víc
+        if (!lastExceedAt) lastExceedAt = now;
+        if (now - lastExceedAt > 280) { // > ~0.3 s v kuse
+          lock("Detekován pohyb/zvednutí telefonu (orientační senzor).");
+        }
+      } else {
+        lastExceedAt = 0;
+      }
+    }
+  };
+
+  window.addEventListener('deviceorientation', orientHandler, { passive:true });
+}
+
+function detachSensors(){
+  window.removeEventListener('visibilitychange', onVisibility);
+  window.removeEventListener('online', onOnline);
+
+  if (motionHandler) {
+    window.removeEventListener('devicemotion', motionHandler);
+    motionHandler = null;
   }
+  if (orientHandler) {
+    window.removeEventListener('deviceorientation', orientHandler);
+    orientHandler = null;
+  }
+  if (motionSeenTimer) {
+    clearTimeout(motionSeenTimer);
+    motionSeenTimer = null;
+  }
+}
+
 
 // === PŘEPSAT: async function start(...) ===
 async function start(code){
@@ -510,19 +596,27 @@ async function start(code){
     }
   }
 
-  // Povolení pohybových senzorů (iOS vyžaduje klik/povolení)
-  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-    try {
-      const p = await DeviceMotionEvent.requestPermission();
-      if (p !== 'granted') {
-        ensureUI();
-        ui.overlay.style.display = 'grid';
-        ui.text.innerHTML = "Povolte přístup k pohybovým senzorům (pro dohled).";
-        setTimeout(() => ui.overlay.style.display = 'none', 3000);
-        return;
-      }
-    } catch {}
-  }
+// Povolení pohybových senzorů (iOS vyžaduje klik/povolení)
+if (typeof DeviceMotionEvent !== 'undefined' &&
+    typeof DeviceMotionEvent.requestPermission === 'function') {
+  try {
+    const p = await DeviceMotionEvent.requestPermission();
+    if (p !== 'granted') {
+      ensureUI();
+      ui.overlay.style.display = 'grid';
+      ui.text.innerHTML = "Povolte přístup k pohybovým senzorům (pro dohled).";
+      setTimeout(() => ui.overlay.style.display = 'none', 3000);
+      return;
+    }
+  } catch {}
+}
+
+// (PŘIDEJ) iOS může chtít i povolení pro DeviceOrientationEvent
+if (typeof DeviceOrientationEvent !== 'undefined' &&
+    typeof DeviceOrientationEvent.requestPermission === 'function') {
+  try { await DeviceOrientationEvent.requestPermission(); } catch {}
+}
+
 
   // Aktivace režimu a příprava senzorů
   S.active = true;
@@ -1612,6 +1706,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
