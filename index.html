@@ -162,6 +162,21 @@
   .root.small .rad{border-top-width:1.6px}
   .caret{display:inline-block;width:.7ch;text-align:center;animation:blink 1s step-end infinite;font-weight:700}
   @keyframes blink{50%{opacity:0}} sup{font-size:.7em}
+  /* === TEST MODE UI === */
+
+/* Pozadí celé kalkulačky (jen box .calc), tlačítka necháváme původní */
+body.exam-on .calc{
+  background: linear-gradient(#ffe8f2,#ffdbe8); /* světle růžové */
+  transition: background 150ms ease-in-out;
+}
+
+/* Kód vpravo nahoře – stejná řádka a velikost jako ostatní badge */
+#bExamCode{
+  /* díky inline style margin-left:auto je už zarovnán vpravo */
+  color:#b3125d;
+  background:transparent; /* stejné jako ostatní .badge */
+}
+
 </style>
 </head>
 <body>
@@ -177,6 +192,7 @@
         <span class="badge auto" id="bDMS">DMS</span>
         <span class="badge auto" id="bENG">ENG</span>
         <span class="badge auto" id="bMem">M</span>
+        <span class="badge auto" id="bExamCode" style="margin-left:auto"></span>
       </div>
       <span class="res" id="res"></span>
     </div>
@@ -362,14 +378,16 @@ const ExamGuard = (() => {
     overlay: null,
     text: null
   };
-  const S = {
-    active: false,
-    locked: false,
-    calibrating: false,
-    grace: 0,               // ms ochranné okno po startu / během END
-    lastMoveAt: 0,
-    stillStart: 0
-  };
+const S = {
+  active: false,
+  locked: false,
+  calibrating: false,
+  grace: 0,
+  lastMoveAt: 0,
+  stillStart: 0,
+  code: ''      // ← přidáno
+};
+
 
   // UI overlay
   function ensureUI(){
@@ -395,16 +413,19 @@ const ExamGuard = (() => {
     ui.overlay.style.display = "grid";
   }
 
-  function alertBuzzer(){
-    try{ navigator.vibrate && navigator.vibrate([400,200,400,200,400,200,400,200,400,200]); }catch{}
-    try{
-      const actx = new (window.AudioContext||window.webkitAudioContext)();
-      const o = actx.createOscillator(); const g = actx.createGain();
-      o.type = 'square'; o.frequency.value = 880; g.gain.value = 0.05;
-      o.connect(g).connect(actx.destination); o.start();
-      setTimeout(()=>{ o.stop(); actx.close(); }, 10000);
-    }catch{}
-  }
+function alertBuzzer(){
+  // krátká vibrace
+  try{ navigator.vibrate && navigator.vibrate(250); }catch{}
+  // jedno krátké pípnutí (~200 ms)
+  try{
+    const actx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = actx.createOscillator(); const g = actx.createGain();
+    o.type = 'square'; o.frequency.value = 880; g.gain.value = 0.06;
+    o.connect(g).connect(actx.destination); o.start();
+    setTimeout(()=>{ o.stop(); actx.close(); }, 200);
+  }catch{}
+}
+
 
   function lock(reason){
     if(S.locked) return;
@@ -473,50 +494,76 @@ const ExamGuard = (() => {
     }
   }
 
-  async function start(){
-    if(S.active || S.locked) return;
-    // Podmínku OFFLINE necháváme – ale QR START běží ještě předtím (aby se mohl načíst fallback)
-    if(navigator.onLine){
-      try{ await fetch('about:blank',{mode:'no-cors'}); }catch{}
-      if(navigator.onLine){
-        ensureUI(); ui.overlay.style.display = 'grid';
-        ui.text.innerHTML = "Nejprve zapni <b>režim letadlo</b> (offline), pak to zkus znovu.";
-        setTimeout(()=>ui.overlay.style.display='none', 3000);
+// === PŘEPSAT: async function start(...) ===
+async function start(code){
+  if (S.active || S.locked) return;
+
+  // Požadavek: být offline (režim letadlo)
+  if (navigator.onLine) {
+    try { await fetch('about:blank', { mode: 'no-cors' }); } catch {}
+    if (navigator.onLine) {
+      ensureUI();
+      ui.overlay.style.display = 'grid';
+      ui.text.innerHTML = "Nejprve zapni <b>režim letadlo</b> (offline), pak to zkus znovu.";
+      setTimeout(() => ui.overlay.style.display = 'none', 3000);
+      return;
+    }
+  }
+
+  // Povolení pohybových senzorů (iOS vyžaduje klik/povolení)
+  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    try {
+      const p = await DeviceMotionEvent.requestPermission();
+      if (p !== 'granted') {
+        ensureUI();
+        ui.overlay.style.display = 'grid';
+        ui.text.innerHTML = "Povolte přístup k pohybovým senzorům (pro dohled).";
+        setTimeout(() => ui.overlay.style.display = 'none', 3000);
         return;
       }
-    }
-
-    // povolení pohybových senzorů (na iOS vyžaduje klik)
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-      try {
-        const p = await DeviceMotionEvent.requestPermission();
-        if (p !== 'granted') {
-          ensureUI(); ui.overlay.style.display='grid';
-          ui.text.innerHTML = "Povolte přístup k pohybovým senzorům (pro dohled).";
-          setTimeout(()=>ui.overlay.style.display='none', 3000);
-          return;
-        }
-      } catch {}
-    }
-
-    S.active = true; S.locked = false; S.calibrating = true;
-    S.stillStart = 0; S.lastMoveAt = 0; S.grace = Date.now() + 1500; // chvilka na položení
-    attachSensors();
-
-    state.resultShown = true;
-    state.resultStr = " Polož telefon a nechej ho 3 s v klidu…";
-    render();
+    } catch {}
   }
 
-  function finish(){
-    if(!S.active && !S.locked) return;
-    S.grace = Date.now() + 5000; // tolerance při ukončení
-    detachSensors();
-    S.active = false;
-    state.resultShown = true;
-    state.resultStr = "Zkouška ukončena.";
-    render();
-  }
+  // Aktivace režimu a příprava senzorů
+  S.active = true;
+  S.locked = false;
+  S.calibrating = true;
+  S.code = String(code || '').toUpperCase().slice(0, 3);
+
+  // Zapni TEST UI (růžové pozadí + badge s kódem vpravo nahoře)
+  state.examActive = true;
+  state.examCode = S.code;
+  updateExamUI();
+
+  S.stillStart = 0;
+  S.lastMoveAt = 0;
+  S.grace = Date.now() + 1500; // krátká benevolence po položení
+  attachSensors();
+
+  // Info na displej
+  state.resultShown = true;
+  state.resultStr = " Polož telefon a nechej ho 3 s v klidu…";
+  render();
+}
+
+// === PŘEPSAT: function finish() ===
+function finish(){
+  if (!S.active && !S.locked) return;
+
+  S.grace = Date.now() + 5000; // tolerance při ukončení
+  detachSensors();
+  S.active = false;
+  S.code = '';
+
+  // Vypni TEST UI (vrátí pozadí a skryje badge s kódem)
+  state.examActive = false;
+  state.examCode = '';
+  updateExamUI();
+
+  state.resultShown = true;
+  state.resultStr = "Zkouška ukončena.";
+  render();
+}
 
   return { start, finish, lock };
 })();
@@ -531,7 +578,7 @@ function openTeacher(){
 let state={ raw:'', cursor:0, ans:0, drg:'DEG', shift:false, hyp:false, eng:false,
             dmsDisplay:false, frac:false, fracMixed:true, memory:0, memOn:false,
             lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
-            modeStage:0, repeat:null };
+            modeStage:0, repeat:null, examActive:false, examCode:'' };
 
 /* ===== pretty + caret, auto scroll kurzoru ===== */
 function prettySegments(raw){
@@ -579,6 +626,21 @@ function render(){
   if(renderModeMenu()){
     return;
   }
+function updateExamUI(){
+  // přepnutí růžového pozadí
+  document.body.classList.toggle('exam-on', !!state.examActive);
+
+  // badge s kódem vpravo nahoře
+  const badge = document.getElementById('bExamCode');
+  if(!badge) return;
+  if(state.examActive && state.examCode){
+    badge.textContent = state.examCode.toUpperCase();
+    badge.classList.add('on');   // .badge.auto.on = viditelný
+  }else{
+    badge.textContent = '';
+    badge.classList.remove('on');
+  }
+}
 
   const segs=prettySegments(state.raw);
   let out='', count=0, placed=false;
@@ -1295,6 +1357,7 @@ updateResultView();
 /* init */
 render();
 fitToViewport();
+updateExamUI();
 
 /* klávesnice */
 addEventListener('keydown',e=>{
@@ -1474,8 +1537,12 @@ const QR = (()=> {
               note.textContent = "QR je propadlý. Vygenerujte nový.";
             }else{
               stop();
-              if((inner.type||'START') === 'START') ExamGuard.start();
-              else ExamGuard.finish();
+              if ((inner.type || 'START') === 'START') {
+  ExamGuard.start(inner.code);   // ← předáme kód z payloadu
+} else {
+  ExamGuard.finish();
+}
+
             }
             return;
           }catch(_e){ /* nepodporovaný formát – pokračuj */ }
@@ -1504,6 +1571,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
