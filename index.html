@@ -59,6 +59,23 @@
 .numrow span:nth-child(1){ justify-self:start; }
 .numrow span:nth-child(2){ justify-self:center; }
 .numrow span:nth-child(3){ justify-self:end; }
+/* === MODE speciální layout pro spodní řádek s čísly === */
+.res.mode{
+  text-align:initial;   /* zruší pravé zarovnání jen v MODE */
+  margin-left:0;
+  min-width:100%;
+}
+
+.res.mode .numrow{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items:center;
+  width:100%;
+}
+
+.res.mode .numrow span:nth-child(1){ justify-self:start; }
+.res.mode .numrow span:nth-child(2){ justify-self:center; }
+.res.mode .numrow span:nth-child(3){ justify-self:end; }
 
 
 
@@ -76,17 +93,17 @@
   background:var(--lcd); color:var(--lcd-text); border-radius:10px;
   padding:12px 14px; box-shadow:inset 0 3px 4px rgba(0,0,0,.25);
   font-family:ui-monospace,Menlo,Consolas,monospace;
-  display:grid; grid-template-rows:auto auto; gap:6px;
-  position:relative; /* umožní absolutní umístění badge */
+  display:grid; grid-template-rows:auto auto; gap:2px; /* menší mezera */
+  position:relative;
 }
-  #exprWrap{
-    font-size:clamp(24px,6.2vw,33px);
-    line-height:1.6;
-    min-height:1.8em;
-    white-space:nowrap;
-    overflow:hidden;
-    position:relative;
-  } /* ← DŮLEŽITÉ! zavřít blok */
+#exprWrap{
+  font-size:clamp(26px,7vw,36px);  /* o kousek větší než dřív */
+  line-height:1.5;
+  min-height:1.8em;
+  white-space:nowrap;
+  overflow:hidden;
+  position:relative;
+}
 
   #expr{display:block; width:100%; white-space:nowrap; padding-right:8px;}
 
@@ -104,16 +121,15 @@
   .badge.auto.on{display:inline-flex}
   .badge.always{display:inline-flex}
 
-  .res{
-    display:block;                 /* spodní řádek má celou šířku */
-    margin-left:auto;
-    font-size:clamp(24px,6.6vw,34px);
-    font-weight:700;
-    text-align:right;              /* výchozí; v MODE si vnitřek přepíšeme */
-    min-width:40%;
-    min-height:1.2em;
-  }
-
+.res{
+  display:block;
+  margin-left:auto;
+  font-size:clamp(26px,7.2vw,36px); /* o kousek větší než dřív */
+  font-weight:700;
+  text-align:right;                 /* pro běžný výsledek vpravo */
+  min-width:40%;
+  min-height:1.2em;
+}
 
   .res .sci .times, .res .sci .ten{ font-size:.8em; }
   .res .sci sup.exp{ font-size:.5em; vertical-align:super; }
@@ -285,36 +301,35 @@ const calcEl = document.getElementById('calc');
 const TEACHER_URL = "https://berniocal.github.io/teacher.html"; // jediný zdroj pravdy
 
 function renderModeMenu(){
+  // MODE 1: Deg/Rad/Gra
   if (state.modeStage === 1) {
-    // Horní řádek – Deg | Rad | Gra
     exprEl.innerHTML =
       '<div class="modebar">' +
         '<span class="label">Deg</span>' +
         '<span class="label">Rad</span>' +
         '<span class="label">Gra</span>' +
       '</div>';
-    // Spodní řádek – 1 | 2 | 3
+    resEl.classList.add('mode');   // ← zapni speciální layout pro čísla
     resEl.innerHTML = '<div class="numrow"><span>1</span><span>2</span><span>3</span></div>';
     return true;
   }
+  // MODE 2: ExS/ExE/Tea
   if (state.modeStage === 2) {
-    // Horní řádek – ExS | ExE | Tea
     exprEl.innerHTML =
       '<div class="modebar">' +
         '<span class="label">ExS</span>' +
         '<span class="label">ExE</span>' +
         '<span class="label">Tea</span>' +
       '</div>';
-    // Spodní řádek – 1 | 2 | 3
+    resEl.classList.add('mode');   // ← zapni speciální layout pro čísla
     resEl.innerHTML = '<div class="numrow"><span>1</span><span>2</span><span>3</span></div>';
     return true;
   }
+
+  // Mimo MODE – vrať běžné chování (vpravo zarovnaný výsledek)
+  resEl.classList.remove('mode');  // ← vypni speciální layout
   return false;
 }
-
-
-
-
 
 // akce menu čísel 1/2/3
 function handleMenuChoice(digit){
@@ -1444,6 +1459,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
