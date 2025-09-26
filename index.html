@@ -28,32 +28,39 @@
   .menu-grid{ display:flex; justify-content:space-between; padding:0 6px }
   .menu-grid span{ min-width: 30%; text-align:center }
 /* MODE – horní řádek: tři nápisy vlevo/na střed/vpravo, bez změny výšky */
+/* Horní MODE řádek – přesná L|C|R mřížka, velké jako zadávací text */
+/* Horní MODE řádek – Deg | Rad | Gra (nebo ExS | ExE | Tea) vlevo/střed/vpravo */
 .modebar{
-  display:flex;
-  justify-content:space-between;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
   align-items:center;
   width:100%;
-  margin:0; padding:0; /* žádné extra mezery */
+  margin:0; padding:0;
 }
 .modebar .label{
-  font-size:clamp(24px,6.2vw,33px);
+  font-size:clamp(24px,6.2vw,33px); /* stejná jako zadávání */
   line-height:1.15;
   margin:0; padding:0;
 }
+.modebar .label:nth-child(1){ justify-self:start; }
+.modebar .label:nth-child(2){ justify-self:center; }
+.modebar .label:nth-child(3){ justify-self:end; }
 
-/* MODE – spodní řádek: 1 / 2 / 3 vlevo/na střed/vpravo */
+/* Spodní MODE řádek – 1 | 2 | 3 vlevo/střed/vpravo; velikost jako výsledky (.res) */
 .numrow{
-  display:flex;
-  justify-content:space-between;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
   align-items:center;
   width:100%;
   margin:0; padding:0;
+  text-align:initial;     /* zruší pravé zarovnání .res pro tento obsah */
+  font-size:inherit;      /* zdědí clamp z .res → stejná velikost jako výsledky */
 }
-.numrow span{
-  font-size:clamp(16px,3.8vw,20px);
-  line-height:1.1;
-  margin:0; padding:0;
-}
+.numrow span:nth-child(1){ justify-self:start; }
+.numrow span:nth-child(2){ justify-self:center; }
+.numrow span:nth-child(3){ justify-self:end; }
+
+
 
 
   .calc{
@@ -79,29 +86,35 @@
     white-space:nowrap;
     overflow:hidden;
     position:relative;
-  }
-  #expr{display:inline-block; white-space:nowrap; padding-right:8px;}
+  } /* ← DŮLEŽITÉ! zavřít blok */
+
+  #expr{display:block; width:100%; white-space:nowrap; padding-right:8px;}
+
   .line2{display:flex; align-items:center; gap:8px; min-height:1.8em}
-.badges{
-  position:absolute; top:4px; left:8px; right:8px;
-  display:flex; gap:8px; flex-wrap:wrap; pointer-events:none;
-}
-.badge{
-  background:transparent; border:none; color:#1b2b3b;
-  border-radius:0; padding:0; font-size:.8em; line-height:1; user-select:none;
-}
-.badge.auto{display:none}
-.badge.auto.on{display:inline-flex}
-.badge.always{display:inline-flex}
+
+  .badges{
+    position:absolute; top:4px; left:8px; right:8px;
+    display:flex; gap:8px; flex-wrap:wrap; pointer-events:none;
+  }
+  .badge{
+    background:transparent; border:none; color:#1b2b3b;
+    border-radius:0; padding:0; font-size:.8em; line-height:1; user-select:none;
+  }
+  .badge.auto{display:none}
+  .badge.auto.on{display:inline-flex}
+  .badge.always{display:inline-flex}
 
   .res{
-  margin-left:auto;
-  font-size:clamp(24px,6.6vw,34px);
-  font-weight:700;
-  text-align:right;
-  min-width:40%;
-  min-height:1.2em; /* rezervuje vertikální místo pro výsledek */
-}
+    display:block;                 /* spodní řádek má celou šířku */
+    margin-left:auto;
+    font-size:clamp(24px,6.6vw,34px);
+    font-weight:700;
+    text-align:right;              /* výchozí; v MODE si vnitřek přepíšeme */
+    min-width:40%;
+    min-height:1.2em;
+  }
+
+
   .res .sci .times, .res .sci .ten{ font-size:.8em; }
   .res .sci sup.exp{ font-size:.5em; vertical-align:super; }
 
@@ -272,32 +285,33 @@ const calcEl = document.getElementById('calc');
 const TEACHER_URL = "https://berniocal.github.io/teacher.html"; // jediný zdroj pravdy
 
 function renderModeMenu(){
-  if(state.modeStage===1){
-    // Horní řádek: Deg | Rad | Gra (vlevo, střed, vpravo)
+  if (state.modeStage === 1) {
+    // Horní řádek – Deg | Rad | Gra
     exprEl.innerHTML =
       '<div class="modebar">' +
         '<span class="label">Deg</span>' +
         '<span class="label">Rad</span>' +
         '<span class="label">Gra</span>' +
       '</div>';
-    // Spodní řádek: 1 | 2 | 3 (vlevo, střed, vpravo)
-    resEl.innerHTML =
-      '<div class="numrow"><span>1</span><span>2</span><span>3</span></div>';
+    // Spodní řádek – 1 | 2 | 3
+    resEl.innerHTML = '<div class="numrow"><span>1</span><span>2</span><span>3</span></div>';
     return true;
   }
-  if(state.modeStage===2){
+  if (state.modeStage === 2) {
+    // Horní řádek – ExS | ExE | Tea
     exprEl.innerHTML =
       '<div class="modebar">' +
         '<span class="label">ExS</span>' +
         '<span class="label">ExE</span>' +
         '<span class="label">Tea</span>' +
       '</div>';
-    resEl.innerHTML =
-      '<div class="numrow"><span>1</span><span>2</span><span>3</span></div>';
+    // Spodní řádek – 1 | 2 | 3
+    resEl.innerHTML = '<div class="numrow"><span>1</span><span>2</span><span>3</span></div>';
     return true;
   }
   return false;
 }
+
 
 
 
@@ -1430,6 +1444,8 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
+
 
 
 
