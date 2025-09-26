@@ -694,34 +694,43 @@ onPD(qs('#btnDMSsym'),()=>{
     return;
   }
 
-  // Při běžném psaní: chytré vkládání °, ′, ″
-  const before = state.raw.slice(0, state.cursor);
-  const lastDeg = before.lastIndexOf('°');
-  const lastMin = before.lastIndexOf('′');
-  const lastSec = before.lastIndexOf('″');
+  // Rozsah pouze v aktuálním "členu" za posledním operátorem nebo levou závorkou
+  const ops = ['+', '−', '×', '÷', ',', '('];
+  const beforeAll = state.raw.slice(0, state.cursor);
+  let segStart = 0;
+  for (const op of ops) {
+    const idx = beforeAll.lastIndexOf(op);
+    if (idx >= segStart) segStart = idx + 1;
+  }
+  const scope = beforeAll.slice(segStart);
 
-  // SHIFT může vynutit konkrétní symboly jako dřív
+  // SHIFT může vynutit konkrétní symboly (zpětná kompatibilita)
   if(state.shift && state.hyp){ state.shift=false; insRaw('″'); return; }
   if(state.shift){ state.shift=false; insRaw('′'); return; }
 
-  // 1) ještě nebyl symbol "°" → vlož "° " (se zarážkou na další čísla)
+  const lastDeg = scope.lastIndexOf('°');
+  const lastMin = scope.lastIndexOf('′');
+  const lastSec = scope.lastIndexOf('″');
+
+  // 1) v aktuálním členu ještě nebyl "°" → vlož "° "
   if(lastDeg === -1){
     insRaw('° ');
     return;
   }
-  // 2) máme "°", ale ne "′" za posledním "°" → vlož "′ "
+  // 2) máme "°", ale ne "′" → vlož "′ "
   if(lastMin < lastDeg){
     insRaw('′ ');
     return;
   }
-  // 3) máme i "′", ale ne "″" za posledním "′" → vlož "″"
+  // 3) máme i "′", ale ne "″" → vlož "″"
   if(lastSec < lastMin){
     insRaw('″');
     return;
   }
-  // 4) kompletní trojice už je – začni novou DMS sekvenci (další "° ")
+  // 4) kompletní trojice je hotová → začni novou DMS sekvenci v tomto členu
   insRaw(' ° ');
 });
+
 
 onPD(qs('#btnRCLSTO'),()=>{ if(state.shift){ state.shift=false; state.memory= +state.ans || 0; state.memOn=state.memory!==0; render(); } else insRaw(String(state.memory)); });
 onPD(qs('#btnENG'),()=>{ state.eng=!state.eng; if(state.resultShown) updateResultView(); render(); });
@@ -808,8 +817,23 @@ ${n})/(${d}))`);
 
   s=s.replace(/sin\^\(-1\)\(/g,'asin(').replace(/cos\^\(-1\)\(/g,'acos(').replace(/tan\^\(-1\)\(/g,'atan(');
   s=s.replace(/Ans/g,String(state.ans)).replace(/π/g,String(Math.PI));
-  s=s.replace(/(-?\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)′\s*(\d+(?:\.\d+)?)″/g,
-    (_,d,m,sec)=>String(dmsToDeg(parseFloat(d),parseFloat(m),parseFloat(sec))));
+  // plné DMS: d ° m ′ s ″
+s = s.replace(
+  /(-?\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)′\s*(\d+(?:\.\d+)?)″/g,
+  (_, d, m, sec) => String(dmsToDeg(parseFloat(d), parseFloat(m), parseFloat(sec)))
+);
+// jen stupně + minuty: doplň sekundy = 0
+s = s.replace(
+  /(-?\d+(?:\.\d+)?)°\s*(\d+(?:\.\d+)?)′/g,
+  (_, d, m) => String(dmsToDeg(parseFloat(d), parseFloat(m), 0))
+);
+// jen stupně: doplň minuty = 0, sekundy = 0
+// (není-li bezprostředně po ° další DMS symbol nebo číslo minut)
+s = s.replace(
+  /(-?\d+(?:\.\d+)?)°(?!\s*[\d′″])/g,
+  (_, d) => String(dmsToDeg(parseFloat(d), 0, 0))
+);
+
   s=s.replace(/(-?\d+(?:\.\d+)?)C(-?\d+(?:\.\d+)?)/g,'nCr($1,$2)');
   s=s.replace(/(-?\d+(?:\.\d+)?)P(-?\d+(?:\.\d+)?)/g,'nPr($1,$2)');
   return s;
@@ -1313,4 +1337,5 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
