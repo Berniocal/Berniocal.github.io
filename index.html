@@ -281,6 +281,68 @@ body.exam-on .calc{
   }
 })();
 </script>
+<script>
+// ---- Audio helper (odemknutí a jedno pípnutí) ----
+const Sound = (() => {
+  let ctx = null, unlocked = false;
+
+  function ensureCtx() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return ctx;
+  }
+  async function unlock() {
+    try {
+      ensureCtx();
+      if (ctx.state === 'suspended') await ctx.resume();
+      // krátký tichý blip, aby si prohlížeč zapsal "interakci"
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      g.gain.value = 0.00001; o.connect(g).connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.01);
+      unlocked = true;
+    } catch {}
+  }
+  function installGlobalUnlockers() {
+    const once = () => { unlock(); window.removeEventListener('pointerdown', once); window.removeEventListener('keydown', once); };
+    window.addEventListener('pointerdown', once, { passive:true });
+    window.addEventListener('keydown', once);
+  }
+  function isUnlocked(){ return unlocked && ctx && ctx.state === 'running'; }
+
+  async function beep(ms=180, hz=880) {
+    try {
+      ensureCtx();
+      if (ctx.state === 'suspended') await ctx.resume();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'square'; o.frequency.value = hz; g.gain.value = 0.06;
+      o.connect(g).connect(ctx.destination); o.start();
+      setTimeout(() => { try{o.stop();}catch{} }, ms);
+    } catch {}
+  }
+  installGlobalUnlockers();
+  return { unlock, beep, isUnlocked };
+})();
+
+// ---- iOS povolení pro oba senzory (motion + orientation) ----
+const SensorPermissions = {
+  async requestAll() {
+    // iOS 13+ potřebuje výslovné povolení; na Androidu to jen proběhne
+    try {
+      if (typeof DeviceMotionEvent !== 'undefined' &&
+          typeof DeviceMotionEvent.requestPermission === 'function') {
+        const p = await DeviceMotionEvent.requestPermission();
+        if (p !== 'granted') throw new Error('Motion denied');
+      }
+    } catch {}
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const p = await DeviceOrientationEvent.requestPermission();
+        if (p !== 'granted') throw new Error('Orientation denied');
+      }
+    } catch {}
+  }
+};
+</script>
 
 <script>
 /* ===== drobné utily ===== */
@@ -372,8 +434,10 @@ function handleMenuChoice(digit){
   return false;
 }
 
-/* ========= ExamGuard: offline + pozadí + pohyb + LOCK ========= */
-const ExamGuard = (() => {
+
+  /* ========= ExamGuard: offline + pozadí + pohyb + LOCK ========= */
+
+  const ExamGuard = (() => {
   const ui = {
     overlay: null,
     text: null
@@ -441,11 +505,17 @@ function alertBuzzer(){
       lock("Aplikace šla do pozadí / byla skryta.");
     }
   }
-  function onOnline(){
-    if(!S.active) return;
-    if(navigator.onLine){ lock("Zařízení je online (wifi/data)."); }
+function onOnline(){
+  if(!S.active) return;
+  if(navigator.onLine){
+    // pípni a zamkni
+    Sound.beep(200, 880);
+    lock("Zařízení je online (wifi/data).");
   }
+}
 
+
+// === Motion + Orientation senzory (s fallbackem) ===
 // === Motion + Orientation senzory (s fallbackem) ===
 let motionHandler = null;
 let orientHandler = null;
@@ -463,18 +533,18 @@ function attachSensors(){
 
     const a = ev.accelerationIncludingGravity || ev.acceleration || {};
     const ax = Math.abs(a.x || 0), ay = Math.abs(a.y || 0), az = Math.abs(a.z || 0);
-    const mag = Math.sqrt(ax*ax + ay*ay + az*az);
+    const mag = Math.sqrt(ax*ax + ay*ay + az*az); // ~ m/s^2, včetně gravitační složky
 
     const now = Date.now();
 
-    // Kalibrace – čekáme, až se telefon položí a zůstane 3 s v klidu
+    // Kalibrace – čekáme, až se telefon položí a zůstane ~3 s v klidu
     if (S.calibrating) {
-      const still = mag < 0.15;
+      const still = mag < 0.25; // trochu benevolentnější klid
       if (still) {
         if (!S.stillStart) S.stillStart = now;
-        if (now - S.stillStart > 3000) {
+        if (now - S.stillStart > 2800) {
           S.calibrating = false;
-          S.grace = now + 1500; // benevolence po kalibraci
+          S.grace = now + 1200; // krátká benevolence po kalibraci
         }
       } else {
         S.stillStart = 0;
@@ -484,9 +554,10 @@ function attachSensors(){
 
     // Po grace okně detekujeme "zvednutí" – souvislý silnější pohyb
     if (now > S.grace) {
-      if (mag > 2.2) {                 // práh zrychlení
+      if (mag > 2.0) {                 // práh zrychlení
         if (!S.lastMoveAt) S.lastMoveAt = now;
-        if (now - S.lastMoveAt > 300) { // 300 ms v kuse
+        if (now - S.lastMoveAt > 250) { // ~0.25 s v kuse
+          Sound.beep(200, 880);
           lock("Detekován pohyb/zvednutí telefonu.");
         }
       } else {
@@ -513,24 +584,21 @@ function attachOrientationFallback(){
     if (!S.active) return;
     const now = Date.now();
 
-    // Použijeme beta (pitch) + gamma (roll). Některé prohlížeče negují osy – nepotřebujeme absolutní orientaci,
-    // jen relativní změnu od "položeného" stavu => pracujeme s rozdíly.
-    const beta  = (typeof ev.beta  === 'number') ? ev.beta  : 0; // -180..180
-    const gamma = (typeof ev.gamma === 'number') ? ev.gamma : 0; //  -90.. 90
+    const beta  = (typeof ev.beta  === 'number') ? ev.beta  : 0; // -180..180 (pitch)
+    const gamma = (typeof ev.gamma === 'number') ? ev.gamma : 0; //  -90.. 90 (roll)
 
     if (S.calibrating) {
-      // během kalibrace si jen držíme základ a sledujeme klid (malé změny)
       if (!base) base = { beta, gamma };
       const dBeta  = beta  - base.beta;
       const dGamma = gamma - base.gamma;
       const delta  = Math.hypot(dBeta, dGamma);
 
-      const still = delta < 2; // ~2°
+      const still = delta < 2.5; // ~2.5°
       if (still) {
         if (!S.stillStart) S.stillStart = now;
-        if (now - S.stillStart > 3000) {
+        if (now - S.stillStart > 2800) {
           S.calibrating = false;
-          S.grace = now + 1500;
+          S.grace = now + 1200;
         }
       } else {
         S.stillStart = 0;
@@ -540,16 +608,15 @@ function attachOrientationFallback(){
     }
 
     if (!base) base = { beta, gamma };
-
-    // Po kalibraci: větší změna náklonu = zvednutí
     const dBeta  = beta  - base.beta;
     const dGamma = gamma - base.gamma;
-    const delta  = Math.hypot(dBeta, dGamma); // velikost změny v °
+    const delta  = Math.hypot(dBeta, dGamma); // změna v °
 
     if (now > S.grace) {
-      if (delta > 14) {                 // ~14° a víc
+      if (delta > 12) {                 // ~12° a víc
         if (!lastExceedAt) lastExceedAt = now;
-        if (now - lastExceedAt > 280) { // > ~0.3 s v kuse
+        if (now - lastExceedAt > 240) { // > ~0.24 s v kuse
+          Sound.beep(200, 880);
           lock("Detekován pohyb/zvednutí telefonu (orientační senzor).");
         }
       } else {
@@ -579,22 +646,53 @@ function detachSensors(){
   }
 }
 
-
 // === PŘEPSAT: async function start(...) ===
+// === PŘEPSAT: async function start(code) ===
 async function start(code){
   if (S.active || S.locked) return;
 
   // Požadavek: být offline (režim letadlo)
   if (navigator.onLine) {
-    try { await fetch('about:blank', { mode: 'no-cors' }); } catch {}
-    if (navigator.onLine) {
-      ensureUI();
-      ui.overlay.style.display = 'grid';
-      ui.text.innerHTML = "Nejprve zapni <b>režim letadlo</b> (offline), pak to zkus znovu.";
-      setTimeout(() => ui.overlay.style.display = 'none', 3000);
-      return;
-    }
+    ensureUI();
+    ui.overlay.style.display = 'grid';
+    ui.text.innerHTML = "Nejprve zapni <b>režim letadlo</b> (offline), pak to zkus znovu.";
+    setTimeout(() => ui.overlay.style.display = 'none', 2800);
+    return;
   }
+
+  // Odemkni zvuk (aby šlo pípnout), vyžádej senzory (iOS)
+  await Sound.unlock();
+  if (!Sound.isUnlocked()) {
+  ensureUI();
+  ui.overlay.style.display = 'grid';
+  ui.text.innerHTML = "Pro zvukové upozornění prosím <b>klepni na obrazovku</b> (povolí se audio).";
+  setTimeout(() => ui.overlay.style.display = 'none', 2200);
+}
+
+  await SensorPermissions.requestAll();
+
+  // Aktivace režimu a příprava senzorů
+  S.active = true;
+  S.locked = false;
+  S.calibrating = true;
+  S.code = String(code || '').toUpperCase().slice(0, 3);
+
+  // TEST UI (růžové pozadí + badge s kódem vpravo nahoře)
+  state.examActive = true;
+  state.examCode = S.code;
+  updateExamUI();
+
+  S.stillStart = 0;
+  S.lastMoveAt = 0;
+  S.grace = Date.now() + 1500; // krátká benevolence po položení
+  attachSensors();
+
+  // Info na displej
+  state.resultShown = true;
+  state.resultStr = " Polož telefon a nech ho 3 s v klidu…";
+  render();
+}
+
 
 // Povolení pohybových senzorů (iOS vyžaduje klik/povolení)
 if (typeof DeviceMotionEvent !== 'undefined' &&
@@ -1706,6 +1804,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
