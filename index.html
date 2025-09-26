@@ -1233,15 +1233,26 @@ function dmsToDeg(d,m,s){ const sign=d<0?-1:1; d=Math.abs(d); return sign*(d+m/6
 function formatNumWithOptions(v){
   if(!isFinite(v)) return String(v);
   const x = roundSig(v,12);
+
   if(state.dmsDisplay) return degToDMS(x);
   if(state.eng)        return toEngineering(x);
   if(state.frac)       return toFractionStr(x,state.fracMixed);
+
   const ax = Math.abs(x);
+  // Malé/velké hodnoty: vždy hezká vědecká notace
   if(ax !== 0 && (ax >= 1e8 || ax < 1e-8)){
     return toScientificAuto(x);
   }
-  return stripZeros(x.toPrecision(12));
+
+  // Jinak použijeme toPrecision – ale pokud by vrátilo e-zápis,
+  // vynutíme naši vědeckou notaci s ×10^
+  const s = stripZeros(x.toPrecision(12));
+  if (/[eE]/.test(s)) {
+    return toScientificAuto(x);
+  }
+  return s;
 }
+
 function updateResultView(){
   if(!state.lastRes){ state.resultStr=''; state.resultShown=false; render(); return; }
   if(state.lastRes.type==='num'){ state.resultStr = formatNumWithOptions(state.lastRes.v); }
@@ -1493,6 +1504,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
