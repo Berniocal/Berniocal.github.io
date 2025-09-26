@@ -1095,22 +1095,38 @@ function evalRPN(rpn){
   const st=[];
   const toRad=v=>state.drg==='DEG'?v*Math.PI/180:state.drg==='GRAD'?v*Math.PI/200:v;
   const fromRad=r=>state.drg==='DEG'?r*180/Math.PI:state.drg==='GRAD'?r*200/Math.PI:r;
-  const map={
-    sin:a=>Math.sin(toRad(a)), cos:a=>Math.cos(toRad(a)), tan:a=>Math.tan(toRad(a)),
-    asin:a=>fromRad(Math.asin(a)), acos:a=>fromRad(Math.acos(a)), atan:a=>fromRad(Math.atan(a)),
-    sinh:a=>Math.sinh(a), cosh:a=>Math.cosh(a), tanh:a=>Math.tanh(a),
-    asinh:a=>Math.asinh(a), acosh:a=>Math.acosh(a), atanh:a=>Math.atanh(a),
-    log:a=>Math.log10(a), ln:a=>Math.log(a), exp:a=>Math.exp(a),
-    sqrt:a=>Math.sqrt(a), cbrt:a=>Math.cbrt(a), root:(y,x)=>x**(1/y),
-    abs:a=>Math.abs(a), ceil:a=>Math.ceil(a), floor:a=>Math.floor(a), inv:a=>1/a,
-    pow10:a=>10**a, pow:(a,b)=>a**b, nCr:(n,r)=>comb(n,r), nPr:(n,r)=>perm(n,r),
-    gcd:(a,b)=>gcd(a,b), lcm:(a,b)=>lcm(a,b), mod:(a,b)=>mod(a,b),
-    'RAN#':()=>Math.random(), Rnd:a=>roundSig(a,10),
-    Pol:(x,y)=>({t:'pair',a:Math.hypot(x,y),b:fromRad(Math.atan2(y,x))}),
-    Rec:(r,th)=>{const rad=toRad(th);return{t:'pair',a:r*Math.cos(rad),b:r*Math.sin(rad)};},
-    DMS:a=>({t:'dms',v:a}),
-    fact:a=>fact(a)
-  };
+const map={
+  // goniometrie – výstup “zacvakneme” na 0/±1 kvůli plovoucí čárce
+  sin:a=>cleanTrig(Math.sin(toRad(a))),
+  cos:a=>cleanTrig(Math.cos(toRad(a))),
+  tan:a=>cleanTrig(Math.tan(toRad(a))),
+
+  // inverzní – vstup zacvaknout do [-1,1]; výsledek podle DRG
+  asin:a=>fromRad(Math.asin(clampUnit(a))),
+  acos:a=>fromRad(Math.acos(clampUnit(a))),
+  atan:a=>fromRad(Math.atan(a)),
+
+  // hyperbolické – volitelné zacvaknutí (tanh ~ ±1, sinh ~ 0)
+  sinh:a=>cleanTrig(Math.sinh(a)),
+  cosh:a=>cleanTrig(Math.cosh(a)),
+  tanh:a=>cleanTrig(Math.tanh(a)),
+
+  asinh:a=>Math.asinh(a), acosh:a=>Math.acosh(a), atanh:a=>Math.atanh(a),
+
+  log:a=>Math.log10(a), ln:a=>Math.log(a), exp:a=>Math.exp(a),
+  sqrt:a=>Math.sqrt(a), cbrt:a=>Math.cbrt(a), root:(y,x)=>x**(1/y),
+  abs:a=>Math.abs(a), ceil:a=>Math.ceil(a), floor:a=>Math.floor(a), inv:a=>1/a,
+  pow10:a=>10**a, pow:(a,b)=>a**b, nCr:(n,r)=>comb(n,r), nPr:(n,r)=>perm(n,r),
+  gcd:(a,b)=>gcd(a,b), lcm:(a,b)=>lcm(a,b), mod:(a,b)=>mod(a,b),
+  'RAN#':()=>Math.random(), Rnd:a=>roundSig(a,10),
+
+  Pol:(x,y)=>({t:'pair',a:Math.hypot(x,y),b:fromRad(Math.atan2(y,x))}),
+  Rec:(r,th)=>{const rad=toRad(th);return{t:'pair',a:r*Math.cos(rad),b:r*Math.sin(rad)};},
+
+  DMS:a=>({t:'dms',v:a}),
+  fact:a=>fact(a)
+};
+
   for(const t of rpn){
     if(t.type==='num'){ st.push(t.value); continue; }
     if(t.type==='op'){
@@ -1135,7 +1151,20 @@ function comb(n,r){ n=Math.round(n); r=Math.round(r); if(r<0||n<0||r>n) return N
 function perm(n,r){ n=Math.round(n); r=Math.round(r); if(r<0||n<0||r>n) return NaN; let p=1; for(let i=0;i<r;i++) p*=(n-i); return p; }
 function roundSig(x,n=12){ if(!isFinite(x)) return x; if(x===0) return 0; const d=Math.ceil(Math.log10(Math.abs(x))); const p=n-d; const m=10**p; return Math.round(x*m)/m; }
 function stripZeros(s){ return s.replace(/(\.\d*?[1-9])0+$/,'$1').replace(/\.0+$/,'').replace(/^-0$/,'0'); }
-function toEngineering(x){
+function clampUnit(x, eps=1e-12){
+  if (x > 1 && x < 1 + eps) return 1;
+  if (x < -1 && x > -1 - eps) return -1;
+  return x;
+}
+// zacvakni výstup trig funkcí na 0 / ±1, když je to “téměř” ono
+function cleanTrig(x, eps=1e-12){
+  if (!isFinite(x)) return x;
+  if (Math.abs(x) < eps) return 0;
+  if (Math.abs(x - 1) < eps) return 1;
+  if (Math.abs(x + 1) < eps) return -1;
+  return x;
+}
+  function toEngineering(x){
   if(!isFinite(x)) return String(x);
   if(x===0) return '0';
   const e=Math.floor(Math.log10(Math.abs(x)));
@@ -1460,6 +1489,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
