@@ -13,7 +13,7 @@ h1{margin:0 0 12px}
 .row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
 label{font-size:14px;color:#243048}
 input,select,button{padding:9px 12px;border-radius:8px}
-input[type="text"],input[type="number"],select{border:1px solid #d6dbe7;outline:none}
+input[type="text"],input[type="number"],select{border:1px solid #d6dbe7;outline:none;background:#fff}
 input[type="text"]{width:140px;text-transform:uppercase}
 input[type="number"]{width:120px}
 button{border:none;background:var(--brand);color:#fff;cursor:pointer}
@@ -24,11 +24,10 @@ canvas{display:block}
 .card{background:#f9fbff;border:1px solid #e8eef9;border-radius:10px;padding:10px;margin-top:12px}
 .mono{font-family:ui-monospace,Consolas,Menlo,monospace;font-size:13px;background:#0f172a;color:#e2e8ff;border-radius:8px;padding:8px;white-space:pre-wrap;word-break:break-all}
 .note{background:#fff8e1;border:1px solid #ffe08a;color:#6a4a00;border-radius:8px;padding:8px;margin:10px 0}
-hr{border:none;border-top:1px dashed #e4e8f2;margin:14px 0}
+.small{font-size:12px;color:#4b5563}
 .kbd{background:#eef2ff;border:1px solid #cfd8ff;border-radius:6px;padding:2px 6px}
 .ok{color:#065f46}
 .err{color:#991b1b}
-.small{font-size:12px;color:#4b5563}
 </style>
 </head>
 <body>
@@ -50,8 +49,9 @@ hr{border:none;border-top:1px dashed #e4e8f2;margin:14px 0}
   </div>
 
   <div class="note">
-    Kalkulačka očekává QR kód, který uvnitř nese JSON <span class="kbd">{"payload":"{...}"}</span> –
-    přesně takto to čte <em>Bernio</em> (nejdřív <span class="kbd">outer = JSON.parse(text)</span>, pak <span class="kbd">inner = JSON.parse(outer.payload)</span>).
+    Kalkulačka očekává QR, který nese JSON <span class="kbd">{"payload":"{...}"}</span>.
+    Tj. nejprve <span class="kbd">outer = JSON.parse(text)</span>, pak
+    <span class="kbd">inner = JSON.parse(outer.payload)</span>.
   </div>
 
   <canvas id="qrcanvas" width="256" height="256"></canvas>
@@ -59,15 +59,15 @@ hr{border:none;border-top:1px dashed #e4e8f2;margin:14px 0}
   <div class="card">
     <strong>Vnitřní payload (pro kontrolu):</strong>
     <div id="payload" class="mono">—</div>
-    <div class="small">Pole: <span class="kbd">type</span> (START/END), <span class="kbd">code</span> (3zn), <span class="kbd">ts</span> (epoch s), <span class="kbd">expSec</span> (sekundy)</div>
+    <div class="small">Pole: <span class="kbd">type</span> (START/END),
+      <span class="kbd">code</span> (3 znaky), <span class="kbd">ts</span> (epoch s),
+      <span class="kbd">expSec</span> (sekundy), <span class="kbd">day</span> (YYYY-MM-DD)</div>
   </div>
 
   <div class="card">
     <strong>Stav:</strong>
     <div id="log">Připraveno.</div>
   </div>
-
-  <hr>
 
   <div class="card">
     <strong>Dnes vygenerované START kódy:</strong>
@@ -78,8 +78,8 @@ hr{border:none;border-top:1px dashed #e4e8f2;margin:14px 0}
 <!-- QR knihovna -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script>
-/* ==== NASTAV: adresa tvého Cloudflare Workeru (volitelné) ==== */
-const API_BASE = "https://examqr.jendabernard.workers.dev/"; // nech prázdné "" pro čistě lokální režim
+/* ==== NASTAV: adresa Workeru (BEZ koncového /) ==== */
+const API_BASE = "https://examqr.jendabernard.workers.dev"; // ← UPRAV SI
 
 /* ===== Pomocné ===== */
 const $ = (id)=>document.getElementById(id);
@@ -88,19 +88,22 @@ const genBtn=$('gen'), saveBtn=$('save');
 const payloadEl=$('payload'), logEl=$('log'), usedEl=$('used');
 const qrCanvas = $('qrcanvas');
 
+/* Sanitizace cest: bez zdvojených lomítek */
+const API = (p) => `${String(API_BASE).replace(/\/+$/,'')}/${String(p).replace(/^\/+/,'')}`;
+
 function normalizeCode(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3); }
 
 async function fetchJSON(url, opts={}){
   const res = await fetch(url, { headers: { 'Content-Type':'application/json' }, ...opts });
-  const text = await res.text().catch(()=>"");
-  let data=null; try{ data = text ? JSON.parse(text) : null; }catch{ data = { raw:text }; }
-  if(!res.ok){ throw new Error((data&&data.error)||(`${res.status} ${res.statusText}`)); }
+  const txt = await res.text().catch(()=> "");
+  let data = null;
+  try { data = txt ? JSON.parse(txt) : null; } catch { data = { raw: txt }; }
+  if(!res.ok) throw new Error((data && data.error) || (`${res.status} ${res.statusText}`));
   return data;
 }
 
 function drawQR(text){
   return new Promise((resolve,reject)=>{
-    // Pozor: očekáváme PLAIN TEXT = JSON string (ne Object)
     QRCode.toCanvas(qrCanvas, String(text), { width:256, margin:1, errorCorrectionLevel:'M' }, (err)=>{
       if(err) reject(err); else resolve();
     });
@@ -116,20 +119,13 @@ function savePng(){
   document.body.appendChild(a); a.click(); a.remove();
 }
 
-function makeInner({ code, type, expSec }){
-  return { code, type, expSec, ts: Math.floor(Date.now()/1000) };
-}
-function makeWrapped(inner){
-  // Bernio očekává objekt { payload: "{...}" } – payload je STRING s vnořeným JSON
-  return { payload: JSON.stringify(inner) };
-}
-
 async function refreshUsed(){
-  if(!API_BASE){ usedEl.textContent = '—'; return; }
   try{
-    const data = await fetchJSON(`${API_BASE}/api/used`);
+    const data = await fetchJSON(API('api/used'));
     usedEl.textContent = (data.used && data.used.length) ? data.used.join(', ') : '—';
-  }catch(e){ usedEl.textContent = 'Nelze načíst: ' + e.message; }
+  }catch(e){
+    usedEl.textContent = 'Nelze načíst: ' + e.message;
+  }
 }
 
 async function generate(){
@@ -137,48 +133,57 @@ async function generate(){
   const type = (typeEl.value === 'END') ? 'END' : 'START';
   const exp  = Math.max(5, Number(expEl.value)||60);
 
-  if(code.length !== 3){ alert('Zadej přesně 3 alfanumerické znaky (např. A7K).'); return; }
+  if(code.length !== 3){
+    alert('Zadej přesně 3 alfanumerické znaky (např. A7K).');
+    return;
+  }
 
   try{
-    logEl.innerHTML = 'Generuji…'; saveBtn.disabled = true;
+    logEl.innerHTML = 'Generuji…';
+    saveBtn.disabled = true;
 
-    let inner, wrapped;
+    // BE volání
+    const resp = await fetchJSON(API('api/qr'), {
+      method: 'POST',
+      body: JSON.stringify({ code, type, expSec: exp })
+    });
 
-    if(API_BASE){
-      // API může vracet wrapped jako objekt NEBO jako string – ošetříme obojí
-      const resp = await fetchJSON(`${API_BASE}/api/qr`, { method: 'POST', body: JSON.stringify({ code, type, expSec: exp }) });
-      // Normalizace
-      const w = resp.wrapped; // očekáváme {payload:"{...}"} nebo "{\"payload\":...}"
-      if(typeof w === 'string'){
-        try{ wrapped = JSON.parse(w); }catch{ wrapped = { payload: w }; }
-      } else { wrapped = w; }
-      if(!wrapped || typeof wrapped.payload !== 'string'){ throw new Error('Neplatná odpověď API (chybí payload).'); }
-      // Inner – vezmeme z API pokud poslal, jinak rozparsujeme
-      inner = resp.inner || (JSON.parse(wrapped.payload));
-    } else {
-      // Lokální fallback – bez backendové kontroly unikátnosti
-      inner = makeInner({ code, type, expSec: exp });
-      wrapped = makeWrapped(inner);
+    // Ošetři wrapped jako objekt nebo string
+    let wrapped = resp.wrapped;
+    if (typeof wrapped === 'string') {
+      try { wrapped = JSON.parse(wrapped); }
+      catch { wrapped = { payload: wrapped }; }
     }
+    if (!wrapped || typeof wrapped.payload !== 'string') {
+      throw new Error('Neplatná odpověď API (chybí payload).');
+    }
+    const inner = resp.inner || JSON.parse(wrapped.payload);
 
-    const qrText = JSON.stringify(wrapped); // tohle přesně načítá Bernio
+    // Vykresli QR (pozor: QR musí nést právě JSON.stringify(wrapped))
+    const qrText = JSON.stringify(wrapped);
     await drawQR(qrText);
+
     payloadEl.textContent = JSON.stringify(inner, null, 2);
     logEl.innerHTML = `<span class="ok">Hotovo:</span> ${inner.type} • kód ${inner.code} • platnost ${inner.expSec}s`;
     saveBtn.disabled = false;
-    if(type === 'START'){ refreshUsed(); }
+
+    if (type === 'START') refreshUsed();
   }catch(e){
     logEl.innerHTML = `<span class="err">Chyba:</span> ${e.message}`;
     saveBtn.disabled = true;
   }
 }
 
-// Dráty
-$('gen').addEventListener('click', generate);
+/* Dráty */
+genBtn.addEventListener('click', generate);
 $('save').addEventListener('click', savePng);
-$('code').addEventListener('input', ()=> codeEl.value = normalizeCode(codeEl.value));
+codeEl.addEventListener('input', ()=> codeEl.value = normalizeCode(codeEl.value));
+['keyup','change'].forEach(ev=>{
+  codeEl.addEventListener(ev, e=>{ if(e.key === 'Enter') genBtn.click(); });
+  expEl.addEventListener(ev,  e=>{ if(e.key === 'Enter') genBtn.click(); });
+});
 
-// init
+/* Init */
 refreshUsed();
 </script>
 </body>
