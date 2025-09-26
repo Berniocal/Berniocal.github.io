@@ -626,6 +626,19 @@ function render(){
   if(renderModeMenu()){
     return;
   }
+  const segs=prettySegments(state.raw);
+  let out='', count=0, placed=false;
+  for(const s of segs){
+    if(!placed && state.cursor<=count){ out+='<span class="caret">_</span>'; placed=true; }
+    out+=s.html; count+=s.len;
+  }
+  if(!placed) out+='<span class="caret">_</span>';
+  exprEl.innerHTML = out;
+
+  resEl.innerHTML = state.resultShown ? state.resultStr : '';
+
+  scrollToCaret();
+}
 function updateExamUI(){
   // přepnutí růžového pozadí
   document.body.classList.toggle('exam-on', !!state.examActive);
@@ -641,21 +654,6 @@ function updateExamUI(){
     badge.classList.remove('on');
   }
 }
-
-  const segs=prettySegments(state.raw);
-  let out='', count=0, placed=false;
-  for(const s of segs){
-    if(!placed && state.cursor<=count){ out+='<span class="caret">_</span>'; placed=true; }
-    out+=s.html; count+=s.len;
-  }
-  if(!placed) out+='<span class="caret">_</span>';
-  exprEl.innerHTML = out;
-
-  resEl.innerHTML = state.resultShown ? state.resultStr : '';
-
-  scrollToCaret();
-}
-
 function clearForNewEntry(){ if(state.resultShown && !state.editAfterResult){ state.resultShown=false; state.resultStr=''; state.raw=''; state.cursor=0; } }
 function insRaw(txt){ clearForNewEntry(); state.raw=state.raw.slice(0,state.cursor)+txt+state.raw.slice(state.cursor); state.cursor+=txt.length; render(); }
 
@@ -1571,6 +1569,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
