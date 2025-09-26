@@ -63,7 +63,7 @@ self.addEventListener('fetch', (event) => {
       // Vezmi z cache index, zároveň se na pozadí pokus o fresh verzi
       const cached = await caches.match(URLS.INDEX);
       // tichá obnova indexu (neblokuje odpověď)
-      fetch(req).then(async (res) => {
+      fetch(req, { cache: 'no-store' }).then(async (res) => {
         try {
           const runtime = await caches.open(CACHE_RUNTIME);
           await runtime.put(URLS.INDEX, res.clone());
@@ -94,6 +94,7 @@ self.addEventListener('fetch', (event) => {
     return cached || network || Response.error();
   })());
 });
+
 
 
 
