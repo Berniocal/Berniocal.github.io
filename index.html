@@ -529,6 +529,11 @@ async function start(code){
   S.locked = false;
   S.calibrating = true;
   S.code = String(code || '').toUpperCase().slice(0, 3);
+// Krátké potvrzení pro žáka
+ensureUI();
+ui.overlay.style.display = 'grid';
+ui.text.innerHTML = `Test mód zapnut (${S.code || '---'})`;
+setTimeout(() => { if (ui && ui.overlay) ui.overlay.style.display = 'none'; }, 800);
 
   // Zapni TEST UI (růžové pozadí + badge s kódem vpravo nahoře)
   state.examActive = true;
@@ -654,6 +659,8 @@ function updateExamUI(){
     badge.classList.remove('on');
   }
 }
+  window.updateExamUI = updateExamUI;
+
 function clearForNewEntry(){ if(state.resultShown && !state.editAfterResult){ state.resultShown=false; state.resultStr=''; state.raw=''; state.cursor=0; } }
 function insRaw(txt){ clearForNewEntry(); state.raw=state.raw.slice(0,state.cursor)+txt+state.raw.slice(state.cursor); state.cursor+=txt.length; render(); }
 
@@ -1451,6 +1458,42 @@ addEventListener('keydown',e=>{
 <script>
 const QR = (()=> {
   let overlay, video, note, running=false, stopCb=null;
+function parseExamPayload(text){
+  // 1) nativní JSON {"v":1,"payload":"{...}"}
+  try {
+    const outer = JSON.parse(text);
+    if (outer && outer.payload) {
+      const inner = JSON.parse(outer.payload);
+      return inner; // očekáváme { type, code, ts, expSec }
+    }
+  } catch {}
+
+  // 2) URL s ?payload=... (URL-encoded JSON)
+  try {
+    if (/^https?:\/\//i.test(text)) {
+      const u = new URL(text);
+      const p = u.searchParams.get('payload') || u.searchParams.get('p') || u.hash.replace(/^#/, '');
+      if (p) {
+        const inner = JSON.parse(decodeURIComponent(p));
+        return inner;
+      }
+      // 2b) fajnový fallback: ?code=XYZ&type=START&ts=...&expSec=...
+      const code = u.searchParams.get('code');
+      const type = (u.searchParams.get('type') || 'START').toUpperCase();
+      const ts = +(u.searchParams.get('ts') || 0);
+      const expSec = +(u.searchParams.get('expSec') || 0);
+      if (code) return { code, type, ts, expSec };
+    }
+  } catch {}
+
+  // 3) "CODE|TYPE|TS|EXP" (např. "A7K|START|1730000000|900")
+  if (/^[A-Za-z0-9]{1,8}\|/i.test(text)) {
+    const [code, type='START', ts='0', expSec='0'] = text.split('|');
+    return { code, type: String(type).toUpperCase(), ts: +ts, expSec: +expSec };
+  }
+
+  return null;
+}
 
   function buildUI(){
     if(overlay) return;
@@ -1526,25 +1569,25 @@ const QR = (()=> {
           if(res) text = res.getText && res.getText();
         }
 
-        if(text){
-          try{
-            const outer = JSON.parse(text);
-            const inner = JSON.parse(outer.payload);
-            const now = Math.floor(Date.now()/1000);
-            if(inner.ts && inner.expSec && (now > inner.ts + inner.expSec)){
-              note.textContent = "QR je propadlý. Vygenerujte nový.";
-            }else{
-              stop();
-              if ((inner.type || 'START') === 'START') {
-  ExamGuard.start(inner.code);   // ← předáme kód z payloadu
-} else {
-  ExamGuard.finish();
+        if (text) {
+  const inner = parseExamPayload(text);
+  if (inner && inner.code) {
+    const now = Math.floor(Date.now()/1000);
+    if (inner.ts && inner.expSec && (now > inner.ts + inner.expSec)) {
+      note.textContent = "QR je propadlý. Vygenerujte nový.";
+    } else {
+      stop();
+      if ((inner.type || 'START').toUpperCase() === 'START') {
+        ExamGuard.start(inner.code);
+      } else {
+        ExamGuard.finish();
+      }
+    }
+    return;
+  }
+  // nepřečtený formát – pokračuj ve skenu
 }
 
-            }
-            return;
-          }catch(_e){ /* nepodporovaný formát – pokračuj */ }
-        }
       }catch(_){ /* ignoruj */ }
       raf = requestAnimationFrame(tick);
     }
@@ -1569,6 +1612,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
