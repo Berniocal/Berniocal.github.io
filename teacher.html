@@ -107,6 +107,10 @@
     <div class="qr-wrap">
       <canvas id="qrcanvas" width="420" height="420"></canvas>
     </div>
+<div class="used-block">
+  <div class="hint">Přihlášení studenti pro kód <b id="curCode">—</b>:</div>
+  <div id="roster" class="list">—</div>
+</div>
 
     <!-- seznam použitých pod QR -->
     <div class="used-block">
@@ -155,6 +159,49 @@ function drawQR(text){
     }, (err)=> err?reject(err):resolve());
   });
 }
+let currentCode = null;
+let rosterTimer = 0;
+
+function formatAgo(sec){
+  if (sec < 60) return `${sec|0}s`;
+  const m = (sec/60)|0, s = sec % 60 | 0;
+  return `${m}m ${s}s`;
+}
+
+function renderRoster(data){
+  const cur = document.getElementById('curCode');
+  const box = document.getElementById('roster');
+  cur.textContent = data.code || '—';
+
+  const list = data.participants || [];
+  if (!list.length){ box.innerHTML = '—'; return; }
+
+  const now = Math.floor(Date.now()/1000);
+  const rows = list.map(p => {
+    const since = formatAgo(now - (p.since||now));
+    const seen  = formatAgo(now - (p.lastSeen||now));
+    const flag  = (p.locked ? '🔒' : (!p.online ? '📴' : (!p.visible ? '🙈' : '✅')));
+    const state = [
+      p.locked ? 'LOCKED' : '',
+      !p.online ? 'OFFLINE' : '',
+      !p.visible ? 'HIDDEN' : ''
+    ].filter(Boolean).join(' · ') || 'OK';
+    return `• <b>${p.name}</b> (${p.device||'?'}) — od: ${since}, naposledy: ${seen} ${flag} <span style="opacity:.8">(${state}${p.violations?`, #${p.violations}`:''}${p.lastReason?`, ${p.lastReason}`:''})</span>`;
+  });
+
+  box.innerHTML = rows.join('<br>');
+}
+
+async function pollRoom(){
+  if (!currentCode) return;
+  try{
+    const res = await fetch(`${API_BASE.replace(/\/+$/,'')}/api/room/${currentCode}?t=${Date.now()}`, { cache:'no-store' });
+    const data = await res.json();
+    renderRoster(data);
+  }catch(e){
+    // ignoruj, zkusíme za 1s znovu
+  }
+}
 
 /* API akce */
 async function refreshUsed(){
@@ -191,6 +238,14 @@ async function generate(){
   }catch(e){
     showToast('Chyba: ' + e.message, 'err');
   }
+  // zjisti skutečný kód z inner payloadu (co vrací /api/qr)
+const inner = (resp && resp.inner) ? resp.inner : null;
+currentCode = (inner && inner.code) ? inner.code : code;
+document.getElementById('curCode').textContent = currentCode;
+if (rosterTimer) clearInterval(rosterTimer);
+rosterTimer = setInterval(pollRoom, 1000);
+pollRoom();
+
 }
 
 /* dráty */
