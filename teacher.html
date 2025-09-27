@@ -216,12 +216,13 @@ async function refreshUsed(){
 async function generate(){
   const code = normalizeCode(codeEl.value);
   const type = 'START';
-  const expSec = 60; // pevně 60 s
+  const expSec = 60;
 
   if (code.length !== 3) { showToast('Zadej přesně 3 alfanumerické znaky (např. A7K).','err'); return; }
 
+  let resp; // <<< přesuňte deklaraci sem
   try{
-    const resp = await fetchJSON(API('api/qr'), {
+    resp = await fetchJSON(API('api/qr'), {
       method:'POST',
       body: JSON.stringify({ code, type, expSec })
     });
@@ -237,16 +238,18 @@ async function generate(){
     refreshUsed();
   }catch(e){
     showToast('Chyba: ' + e.message, 'err');
+    return; // ať nepokračujeme bez resp
   }
-  // zjisti skutečný kód z inner payloadu (co vrací /api/qr)
-const inner = (resp && resp.inner) ? resp.inner : null;
-currentCode = (inner && inner.code) ? inner.code : code;
-document.getElementById('curCode').textContent = currentCode;
-if (rosterTimer) clearInterval(rosterTimer);
-rosterTimer = setInterval(pollRoom, 1000);
-pollRoom();
 
+  // teď už resp existuje
+  const inner = (resp && resp.inner) ? resp.inner : null;
+  currentCode = (inner && inner.code) ? inner.code : code;
+  document.getElementById('curCode').textContent = currentCode;
+  if (rosterTimer) clearInterval(rosterTimer);
+  rosterTimer = setInterval(pollRoom, 1000);
+  pollRoom();
 }
+
 
 /* dráty */
 codeEl.addEventListener('input', ()=> codeEl.value = normalizeCode(codeEl.value));
