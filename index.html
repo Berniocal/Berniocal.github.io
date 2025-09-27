@@ -513,7 +513,8 @@ const S = {
   grace: 0,
   lastMoveAt: 0,
   stillStart: 0,
-  code: ''      // ← přidáno
+  code: '',
+  netTimer: 0
 };
 
 
@@ -559,6 +560,8 @@ function alertBuzzer(){
     if(S.locked) return;
     S.locked = true; S.active = false; S.calibrating = false;
     detachSensors();
+    if (S.netTimer) { clearInterval(S.netTimer); S.netTimer = 0; }
+
     showLock(reason || "Aplikace byla zablokována.");
     alertBuzzer();
   }
@@ -587,7 +590,7 @@ let motionSeenTimer = null;
 let motionEverSeen = false;
 
 function attachSensors(){
-  window.addEventListener('visibilitychange', onVisibility);
+  document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('online', onOnline);
 
   // Primární: devicemotion (akcelerometr)
@@ -615,6 +618,7 @@ function attachSensors(){
       }
       return;
     }
+
 
     // Po grace okně detekujeme "zvednutí" – souvislý silnější pohyb
     if (now > S.grace) {
@@ -693,7 +697,7 @@ function attachOrientationFallback(){
 }
 
 function detachSensors(){
-  window.removeEventListener('visibilitychange', onVisibility);
+  document.removeEventListener('visibilitychange', onVisibility);
   window.removeEventListener('online', onOnline);
 
   if (motionHandler) {
@@ -708,6 +712,7 @@ function detachSensors(){
     clearTimeout(motionSeenTimer);
     motionSeenTimer = null;
   }
+  if (S.netTimer) { clearInterval(S.netTimer); S.netTimer = 0; }
 }
 
 // === PŘEPSAT: async function start(...) ===
@@ -754,6 +759,16 @@ async function start(code){
   S.lastMoveAt = 0;
   S.grace = Date.now() + 1500; // krátká benevolence po položení
   attachSensors();
+// periodický offline ping (1× spuštěný při startu)
+if (S.netTimer) { clearInterval(S.netTimer); S.netTimer = 0; }
+S.netTimer = setInterval(async () => {
+  if (!S.active) return;
+  try {
+    await fetch('https://www.gstatic.com/generate_204', { mode:'no-cors', cache:'no-store' });
+    Sound.beep(200, 880);
+    lock("Zařízení je online (detekováno pingem).");
+  } catch {}
+}, 2000);
 
   // Info na displej
   state.resultShown = true;
@@ -771,6 +786,7 @@ function finish(){
   detachSensors();
   S.active = false;
   S.code = '';
+if (S.netTimer) { clearInterval(S.netTimer); S.netTimer = 0; }
 
   // Vypni TEST UI (vrátí pozadí a skryje badge s kódem)
   state.examActive = false;
@@ -2055,28 +2071,6 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
