@@ -645,9 +645,9 @@ let motionSeenTimer = null;
 let motionEverSeen = false;
 
 function attachSensors(){
-document.addEventListener('visibilitychange', onVisibility);
-window.addEventListener('online', onNetChange);
-window.addEventListener('offline', onNetChange);
+  document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('online', onNetChange);
+  window.addEventListener('offline', onNetChange);
 
   // Primární: devicemotion (akcelerometr)
   motionHandler = (ev) => {
@@ -656,18 +656,18 @@ window.addEventListener('offline', onNetChange);
 
     const a = ev.accelerationIncludingGravity || ev.acceleration || {};
     const ax = Math.abs(a.x || 0), ay = Math.abs(a.y || 0), az = Math.abs(a.z || 0);
-    const mag = Math.sqrt(ax*ax + ay*ay + az*az); // ~ m/s^2, včetně gravitační složky
+    const mag = Math.sqrt(ax*ax + ay*ay + az*az);
 
     const now = Date.now();
 
     // Kalibrace – čekáme, až se telefon položí a zůstane ~3 s v klidu
     if (S.calibrating) {
-      const still = mag < 0.25; // trochu benevolentnější klid
+      const still = mag < 0.25;
       if (still) {
         if (!S.stillStart) S.stillStart = now;
         if (now - S.stillStart > 2800) {
           S.calibrating = false;
-          S.grace = now + 1200; // krátká benevolence po kalibraci
+          S.grace = now + 1200;
         }
       } else {
         S.stillStart = 0;
@@ -675,17 +675,37 @@ window.addEventListener('offline', onNetChange);
       return;
     }
 
+    // detekce pohybu přes akcelerometr (vlastní prahování případně doplňte)
+    if (now > S.grace && mag > 2.2) { // příklad prahu
+      Sound.beep(200, 880);
+      lock("Detekován pohyb/zvednutí telefonu (akcelerometr).");
+    }
+  };
+
+  // >>> TADY – registrace listeneru MUSÍ být mimo motionHandler
+  window.addEventListener('devicemotion', motionHandler, { passive:true });
+
+  // Pokud nepřijde žádný devicemotion event, přepneme se na orientation fallback
+  motionEverSeen = false;
+  if (motionSeenTimer) clearTimeout(motionSeenTimer);
+  motionSeenTimer = setTimeout(() => {
+    if (!motionEverSeen) attachOrientationFallback();
+  }, 1800);
+
+// (volitelně ponechat) periodický offline ping
 if (S.netTimer) { clearInterval(S.netTimer); S.netTimer = 0; }
 S.netTimer = setInterval(async () => {
   if (!S.active) return;
   try {
     await fetch('https://www.gstatic.com/generate_204', { mode:'no-cors', cache:'no-store' });
-    // ok – nic
+    // OK – online, nic neděláme
   } catch {
     Sound.beep(200, 880);
     lock("Ztráta internetu (ping selhal).");
   }
 }, 2000);
+
+}
 
   window.addEventListener('devicemotion', motionHandler, { passive:true });
 
@@ -752,7 +772,7 @@ function attachOrientationFallback(){
 
 function detachSensors(){
   document.removeEventListener('visibilitychange', onVisibility);
-  window.removeEventListener('online', onOnline);
+  window.removeEventListener('online', onNetChange);
 
   if (motionHandler) {
     window.removeEventListener('devicemotion', motionHandler);
@@ -2189,6 +2209,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
