@@ -751,7 +751,7 @@ function attachOrientationFallback(){
 function detachSensors(){
   document.removeEventListener('visibilitychange', onVisibility);
   window.removeEventListener('online', onNetChange);
-
+  window.removeEventListener('offline', onNetChange); 
   if (motionHandler) {
     window.removeEventListener('devicemotion', motionHandler);
     motionHandler = null;
@@ -845,16 +845,19 @@ S.uptimeTimer = setInterval(() => {
   refreshExamTimer();
 }, 6000);
 
-// periodický offline ping (1× spuštěný při startu)
+// ✅ volitelné: ping pro detekci OFFLINE (zamkne jen když ping selže)
 if (S.netTimer) { clearInterval(S.netTimer); S.netTimer = 0; }
 S.netTimer = setInterval(async () => {
   if (!S.active) return;
   try {
     await fetch('https://www.gstatic.com/generate_204', { mode:'no-cors', cache:'no-store' });
+    // online – nic
+  } catch {
     Sound.beep(200, 880);
-    lock("Zařízení je online (detekováno pingem).");
-  } catch {}
-}, 2000);
+    lock("Ztráta internetu (ping selhal).");
+  }
+}, 3000);
+
 
   // Info na displej
   state.resultShown = true;
@@ -2187,6 +2190,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
