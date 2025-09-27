@@ -692,19 +692,6 @@ function attachSensors(){
     if (!motionEverSeen) attachOrientationFallback();
   }, 1800);
 
-// (volitelně ponechat) periodický offline ping
-if (S.netTimer) { clearInterval(S.netTimer); S.netTimer = 0; }
-S.netTimer = setInterval(async () => {
-  if (!S.active) return;
-  try {
-    await fetch('https://www.gstatic.com/generate_204', { mode:'no-cors', cache:'no-store' });
-    // OK – online, nic neděláme
-  } catch {
-    Sound.beep(200, 880);
-    lock("Ztráta internetu (ping selhal).");
-  }
-}, 2000);
-
 }
 
   
@@ -2200,6 +2187,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
