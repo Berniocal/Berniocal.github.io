@@ -799,21 +799,38 @@ if (!name) {
   setTimeout(() => ui.overlay.style.display = 'none', 2200);
   return;
 }
-try{
+try {
   const resp = await fetch(API('api/join'), {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
-    body: JSON.stringify({ code: String(code||'').toUpperCase().slice(0,3), name, device: deviceLabel() })
+    body: JSON.stringify({
+      code: String(code||'').toUpperCase().slice(0,3),
+      name,
+      device: deviceLabel()
+    })
   });
-  const data = await resp.json();
-  if (!resp.ok || !data.pid) throw new Error(data.error || 'join failed');
+
+  const text = await resp.text();
+  let data = null; try { data = text ? JSON.parse(text) : null; } catch {}
+
+  if (!resp.ok) {
+    const msg =
+      (data && data.error) ||
+      (resp.status === 410 ? 'QR expired (propadl).' :
+       resp.status === 404 ? 'START code not found today.' :
+       `${resp.status} ${resp.statusText}`);
+    throw new Error(msg);
+  }
+  if (!data || !data.pid) throw new Error('Bad response from /api/join');
   S.pid = data.pid;
-}catch(e){
+} catch (e) {
+  console.warn('JOIN failed:', e);
   ensureUI(); ui.overlay.style.display = 'grid';
-  ui.text.innerHTML = "Nelze se připojit k testu. Zkontroluj internet.";
-  setTimeout(() => ui.overlay.style.display = 'none', 2600);
+  ui.text.innerHTML = `Nelze se připojit k testu.<br><small>${String(e.message || e)}</small>`;
+  setTimeout(() => ui.overlay.style.display = 'none', 3200);
   return;
 }
+
 
   // Aktivace režimu a příprava senzorů
   S.active = true;
@@ -845,18 +862,18 @@ S.uptimeTimer = setInterval(() => {
   refreshExamTimer();
 }, 6000);
 
-// ✅ volitelné: ping pro detekci OFFLINE (zamkne jen když ping selže)
 if (S.netTimer) { clearInterval(S.netTimer); S.netTimer = 0; }
 S.netTimer = setInterval(async () => {
   if (!S.active) return;
   try {
     await fetch('https://www.gstatic.com/generate_204', { mode:'no-cors', cache:'no-store' });
-    // online – nic
+    // OK – online, nic neděláme
   } catch {
     Sound.beep(200, 880);
     lock("Ztráta internetu (ping selhal).");
   }
 }, 3000);
+
 
 
   // Info na displej
@@ -2190,6 +2207,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
