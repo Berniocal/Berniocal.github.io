@@ -344,6 +344,69 @@ const SensorPermissions = {
   }
 };
 </script>
+<script>
+// === Wake Lock + iOS hidden-video helpery (globální) ===
+let wakeLock = null;
+let hiddenVideoEl = null;
+
+async function enableWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        console.log('Wake Lock uvolněn');
+      });
+    }
+  } catch (err) {
+    console.warn('Nepodařilo se zapnout Wake Lock:', err);
+  }
+}
+
+async function disableWakeLock() {
+  try {
+    if (wakeLock) {
+      await wakeLock.release();
+      wakeLock = null;
+    }
+  } catch (err) {
+    console.warn('Chyba při vypínání Wake Locku:', err);
+  }
+}
+
+// iOS: neviditelné video, aby se displej nevypínal
+function startHiddenVideoTrick() {
+  if (hiddenVideoEl) return; // už běží
+
+  hiddenVideoEl = document.createElement('video');
+  hiddenVideoEl.src = "data:video/mp4;base64,AAAA"; // prázdný zdroj
+  hiddenVideoEl.muted = true;
+  hiddenVideoEl.loop = true;
+  hiddenVideoEl.playsInline = true;
+  hiddenVideoEl.style.position = 'absolute';
+  hiddenVideoEl.style.width = '1px';
+  hiddenVideoEl.style.height = '1px';
+  hiddenVideoEl.style.opacity = '0';
+  hiddenVideoEl.style.pointerEvents = 'none';
+  document.body.appendChild(hiddenVideoEl);
+
+  // iOS vyžaduje user-gesture → po prvním tapu spustíme play()
+  const playAttempt = () => {
+    hiddenVideoEl.play().catch(() => {});
+    document.removeEventListener('pointerdown', playAttempt);
+    document.removeEventListener('touchstart', playAttempt);
+  };
+  document.addEventListener('pointerdown', playAttempt, { passive: true });
+  document.addEventListener('touchstart', playAttempt, { passive: true });
+}
+
+function stopHiddenVideoTrick() {
+  if (hiddenVideoEl) {
+    try { hiddenVideoEl.pause(); } catch {}
+    hiddenVideoEl.remove();
+    hiddenVideoEl = null;
+  }
+}
+</script>
 
 <script>
 /* ===== drobné utily ===== */
@@ -683,6 +746,9 @@ async function start(code){
   state.examCode = S.code;
   updateExamUI();
   startExamColorCycleDeterministic(S.code);
+  enableWakeLock();          // udrží displej aktivní (Android/Chrome/PWA)
+ startHiddenVideoTrick();   // iOS Safari workaround
+
 
   S.stillStart = 0;
   S.lastMoveAt = 0;
@@ -711,6 +777,9 @@ function finish(){
   state.examCode = '';
   updateExamUI();
   stopExamColorCycle();
+  disableWakeLock();
+stopHiddenVideoTrick();
+
 
   state.resultShown = true;
   state.resultStr = "Zkouška ukončena.";
@@ -1981,6 +2050,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
