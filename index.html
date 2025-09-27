@@ -707,16 +707,7 @@ S.netTimer = setInterval(async () => {
 
 }
 
-  window.addEventListener('devicemotion', motionHandler, { passive:true });
-
-  // Pokud nepřijde žádný devicemotion event, přepneme se na orientation fallback
-  motionEverSeen = false;
-  if (motionSeenTimer) clearTimeout(motionSeenTimer);
-  motionSeenTimer = setTimeout(() => {
-    if (!motionEverSeen) attachOrientationFallback();
-  }, 1800);
-}
-
+  
 function attachOrientationFallback(){
   // Fallback: deviceorientation (změny náklonu v °)
   let base = null;
@@ -2209,6 +2200,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
