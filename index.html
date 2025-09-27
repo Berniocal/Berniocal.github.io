@@ -1039,13 +1039,18 @@ function randomPastel(rand){
   }
 }
 
-function pickNextTargets(rand){
-  return {
-    c1: randomPastel(rand),
-    c2: randomPastel(rand)
-  };
+function hueDiff(a,b){
+ const d = Math.abs(a.h - b.h) % 360;
+return d > 180 ? 360 - d : d;
 }
-
+function pickNextTargets(rand){
+const c1 = randomPastel(rand);
+let c2 = randomPastel(rand);
+let tries = 0;
+ // udrž aspoň ~50° rozestup v hue, ať nejsou obě barvy moc podobné
+ while (hueDiff(c1, c2) < 50 && tries++ < 20) c2 = randomPastel(rand);
+ return { c1, c2 };
+} 
 function applyGradient(c1, c2){
   const rgb1 = hslToRgbArray(c1.h, c1.s, c1.l);
   const rgb2 = hslToRgbArray(c2.h, c2.s, c2.l);
@@ -1067,7 +1072,9 @@ function stepExamTween(now){
     tween.end1 = next.c1;
     tween.end2 = next.c2;
     tween.t0 = now;
-    p = 0;
+     p = 0;
+    // nová (náhodná) délka příštího přechodu
+    tween.dur = 45000 + Math.floor(rand()*45000);
   }
   const cur1 = lerpHsl(tween.start1, tween.end1, Math.min(Math.max(p,0),1));
   const cur2 = lerpHsl(tween.start2, tween.end2, Math.min(Math.max(p,0),1));
@@ -1081,19 +1088,19 @@ function startExamColorCycleDeterministic(code){
   const seed = hashCode(String(code||'').toUpperCase());
   const rand = seededRandom(seed);
 
-  // Počáteční barvy: růžové, jak chceš (odpovídá původnímu)
-  const start1 = hsl(340, 0.75, 0.93); // cca #ffe8f2
-  const start2 = hsl(340, 0.70, 0.90); // cca #ffdbe8
-
-  const target = pickNextTargets(rand);
-
+ // Počáteční barvy: hned náhodné pastely (žádná fixní růžová)
+ const first  = pickNextTargets(rand);
+ const start1 = first.c1;
+ const start2 = first.c2;
+ const target = pickNextTargets(rand);
   tween = {
     rand,
     start1, start2,
     end1: target.c1,
     end2: target.c2,
     t0: performance.now(),
-    dur: 300000 // 5 minut v ms
+   // rychlejší a variabilní: 45–90 s
+   dur: 45000 + Math.floor(rand()*45000)
   };
 
   // nastav okamžitě start, ať UI hned sedí
@@ -2117,6 +2124,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
