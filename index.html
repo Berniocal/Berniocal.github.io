@@ -859,13 +859,51 @@ let tween = null;
     dur: 300000         // 5 minut
   }
 */
+// === Forbidden / similar-to-base-color filter ===
+const BASE_BG_HEX = ['#203347', '#1a2c3d']; // běžné pozadí kalkulačky
+
+function hexToRgb(hex){
+  const h = hex.replace('#','');
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function srgbToLinear(v){ // v ∈ [0..1]
+  return (v <= 0.04045) ? (v/12.92) : Math.pow((v+0.055)/1.055, 2.4);
+}
+function rgbDistLinear(a, b){ // eukleid v lineárním RGB, citlivější na tmavé
+  const al = a.map(v => srgbToLinear(v/255));
+  const bl = b.map(v => srgbToLinear(v/255));
+  const dx = al[0]-bl[0], dy = al[1]-bl[1], dz = al[2]-bl[2];
+  return Math.sqrt(dx*dx + dy*dy + dz*dz);
+}
+const FORBIDDEN_RGB = BASE_BG_HEX.map(hexToRgb);
+// práh podobnosti – 0.18 je docela přísný; zvětši → víc vyhazuje
+const FORBIDDEN_DIST = 0.18;
+
+function isNearForbidden(rgb){
+  return FORBIDDEN_RGB.some(base => rgbDistLinear(rgb, base) < FORBIDDEN_DIST);
+}
 
 function randomPastel(rand){
-  const h = Math.floor(rand()*360);
-  const s = 0.75 + rand()*0.15;   // 0.75–0.90
-  const l = 0.88 + rand()*0.07;   // 0.88–0.95
-  return hsl(h, s, l);
+  // původně sis bral h, s, l → nechávám styl podobný
+  // Pastely: vyšší s, vyšší l (ale ne úplně křiklavé)
+  let tries = 0;
+  while(true){
+    const h = rand()*360;
+    const s = 0.45 + rand()*0.35;   // 45–80 %
+    const l = 0.62 + rand()*0.18;   // 62–80 %
+    const rgb = hslToRgb(h, s, l);  // [r,g,b] 0–255
+
+    // vyřaď barvy podobné běžnému pozadí kalkulačky
+    if (!isNearForbidden(rgb)) {
+      return { h, s, l, rgb };
+    }
+    if (++tries > 40){
+      // nouzový únik – když náhodou padáme jen do zakázané zóny
+      return { h, s, l, rgb };
+    }
+  }
 }
+
 function pickNextTargets(rand){
   return {
     c1: randomPastel(rand),
@@ -1943,6 +1981,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
