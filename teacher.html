@@ -80,6 +80,13 @@
          padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.5);display:none}
   .toast.ok{border-color:rgba(16,185,129,.5)}
   .toast.err{border-color:rgba(239,68,68,.6)}
+  /* tlačítko bude na samostatném řádku a uprostřed */
+.row #gen{
+  display:block;
+  margin:12px auto 0;   /* auto = vycentrovat */
+  flex-basis:100%;      /* zalom na novou řádku v rámci .row */
+}
+
 </style>
 </head>
 <body>
@@ -126,7 +133,7 @@ const API_BASE = "https://examqr.jendabernard.workers.dev";
 
 /* ===== pomocné ===== */
 const $ = (id)=>document.getElementById(id);
-const codeEl=$('code'), typeEl=$('type'), genBtn=$('gen'), usedEl=$('used'), qrCanvas=$('qrcanvas'), toastEl=$('toast');
+const codeEl=$('code'), genBtn=$('gen'), usedEl=$('used'), qrCanvas=$('qrcanvas'), toastEl=$('toast');
 
 function API(p){ return String(API_BASE).replace(/\/+$/,'') + '/' + String(p).replace(/^\/+/, ''); }
 function normalizeCode(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3); }
@@ -168,7 +175,7 @@ async function refreshUsed(){
 
 async function generate(){
   const code = normalizeCode(codeEl.value);
-  const type = (typeEl.value === 'END') ? 'END' : 'START';
+  const type = 'START';
   const expSec = 60; // pevně 60 s
 
   if (code.length !== 3) { showToast('Zadej přesně 3 alfanumerické znaky (např. A7K).','err'); return; }
