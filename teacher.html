@@ -3,36 +3,94 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Teacher QR – generátor START/END</title>
+<title>Techaer QR generator</title>
 <style>
-:root{--ink:#0b1220;--muted:#667085;--card:#ffffff;--edge:#e6eaf3;--brand:#2563eb}
+:root{
+  --bg:#0b1220;          /* hlavní pozadí */
+  --panel:#101826;       /* panely/karty */
+  --edge:#1f2a3a;        /* hrany/rámečky */
+  --ink:#e5ecff;         /* hlavní text */
+  --muted:#9fb1ce;       /* druhotný text */
+  --brand:#60a5fa;       /* primární tlačítko */
+  --brand-ink:#07111f;   /* text na prim. tlačítku */
+  --accent:#38bdf8;      /* drobný akcent (linky) */
+}
+
 *{box-sizing:border-box}
-body{font-family:system-ui,Segoe UI,Roboto,Arial;background:#f5f7fb;color:var(--ink);margin:0;padding:20px}
-.container{max-width:820px;margin:0 auto;background:var(--card);padding:18px;border-radius:12px;box-shadow:0 8px 28px rgba(10,20,40,.08);border:1px solid #eef2f7}
-h1{margin:0 0 12px}
-.row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
-label{font-size:14px;color:#243048}
-input,select,button{padding:9px 12px;border-radius:8px}
-input[type="text"],input[type="number"],select{border:1px solid #d6dbe7;outline:none;background:#fff}
-input[type="text"]{width:140px;text-transform:uppercase}
+html,body{height:100%}
+body{
+  margin:0; padding:20px;
+  font-family:system-ui,Segoe UI,Roboto,Arial;
+  color:var(--ink); background:radial-gradient(1200px 800px at 10% -20%, #111C2C 0%, #0B1220 55%), var(--bg);
+}
+
+.container{
+  max-width:820px;margin:0 auto;
+  background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0)) , var(--panel);
+  padding:18px;border-radius:14px;
+  box-shadow:0 10px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
+  border:1px solid var(--edge);
+}
+
+h1{margin:0 0 14px; font-weight:700; letter-spacing:.2px}
+h1 .dot{color:var(--accent)}
+
+.row{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+
+label{font-size:13px;color:var(--muted)}
+input,select,button{padding:10px 12px;border-radius:10px;font-size:14px}
+
+input[type="text"],input[type="number"],select{
+  border:1px solid var(--edge); outline:none; background:#0d1522; color:var(--ink);
+  box-shadow:inset 0 0 0 9999px rgba(255,255,255,.02);
+}
+input[type="text"]{width:140px;text-transform:uppercase;letter-spacing:.5px}
 input[type="number"]{width:120px}
-button{border:none;background:var(--brand);color:#fff;cursor:pointer}
-button.secondary{background:#0f172a}
+
+button{
+  border:1px solid transparent;
+  background:linear-gradient(180deg, #7bb8ff, #4e97fb);
+  color:var(--brand-ink); cursor:pointer; font-weight:700;
+  box-shadow:0 6px 16px rgba(96,165,250,.25);
+}
+button.secondary{
+  background:linear-gradient(180deg, #1f2937, #111827);
+  color:#e5ecff; border:1px solid #263243; box-shadow:none;
+}
 button:disabled{opacity:.6;cursor:not-allowed}
+
 canvas{display:block}
-#qrcanvas{border:1px solid var(--edge);padding:6px;background:#fff;border-radius:8px}
-.card{background:#f9fbff;border:1px solid #e8eef9;border-radius:10px;padding:10px;margin-top:12px}
-.mono{font-family:ui-monospace,Consolas,Menlo,monospace;font-size:13px;background:#0f172a;color:#e2e8ff;border-radius:8px;padding:8px;white-space:pre-wrap;word-break:break-all}
-.note{background:#fff8e1;border:1px solid #ffe08a;color:#6a4a00;border-radius:8px;padding:8px;margin:10px 0}
-.small{font-size:12px;color:#4b5563}
-.kbd{background:#eef2ff;border:1px solid #cfd8ff;border-radius:6px;padding:2px 6px}
-.ok{color:#065f46}
-.err{color:#991b1b}
+#qrcanvas{
+  border:1px solid var(--edge); padding:8px; background:#0b1320; border-radius:12px; margin-top:4px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+.card{
+  background:#0d1726;border:1px solid var(--edge);
+  border-radius:12px;padding:12px;margin-top:14px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+}
+.mono{
+  font-family:ui-monospace,Consolas,Menlo,monospace;
+  font-size:13px;color:#d6e3ff;background:#0b1220;border:1px solid var(--edge);
+  border-radius:10px;padding:8px;white-space:pre-wrap;word-break:break-all
+}
+.small{font-size:12px;color:var(--muted)}
+.kbd{
+  background:#0f1b2c;border:1px solid #1d2a3d;border-radius:6px;padding:2px 6px;color:#caddff
+}
+
+/* responzivní kosmetika */
+@media (max-width:520px){
+  .row{gap:8px}
+  input[type="text"]{width:120px}
+  input[type="number"]{width:110px}
+}
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>Teacher QR – generátor START/END</h1>
+  <h1>Techaer QR generator <span class="dot">●</span></h1>
 
   <div class="row">
     <label for="code">Kód (3 znaky)</label>
@@ -48,26 +106,9 @@ canvas{display:block}
     <button id="save" class="secondary" disabled>Stáhnout PNG</button>
   </div>
 
-  <div class="note">
-    Kalkulačka očekává QR, který nese JSON <span class="kbd">{"payload":"{...}"}</span>.
-    Tj. nejprve <span class="kbd">outer = JSON.parse(text)</span>, pak
-    <span class="kbd">inner = JSON.parse(outer.payload)</span>.
-  </div>
+  <!-- Původní vysvětlivky („kalkulačka očekává…“), payload i Stav byly na přání odstraněny -->
 
   <canvas id="qrcanvas" width="256" height="256"></canvas>
-
-  <div class="card">
-    <strong>Vnitřní payload (pro kontrolu):</strong>
-    <div id="payload" class="mono">—</div>
-    <div class="small">Pole: <span class="kbd">type</span> (START/END),
-      <span class="kbd">code</span> (3 znaky), <span class="kbd">ts</span> (epoch s),
-      <span class="kbd">expSec</span> (sekundy), <span class="kbd">day</span> (YYYY-MM-DD)</div>
-  </div>
-
-  <div class="card">
-    <strong>Stav:</strong>
-    <div id="log">Připraveno.</div>
-  </div>
 
   <div class="card">
     <strong>Dnes vygenerované START kódy:</strong>
@@ -79,17 +120,17 @@ canvas{display:block}
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script>
 /* ==== NASTAV: adresa Workeru (BEZ koncového /) ==== */
-const API_BASE = "https://examqr.jendabernard.workers.dev"; // ← UPRAV SI
+const API_BASE = "https://examqr.jendabernard.workers.dev"; // ← nech dle tvého backendu
 
 /* ===== Pomocné ===== */
 const $ = (id)=>document.getElementById(id);
 const codeEl=$('code'), typeEl=$('type'), expEl=$('exp');
 const genBtn=$('gen'), saveBtn=$('save');
-const payloadEl=$('payload'), logEl=$('log'), usedEl=$('used');
+const usedEl=$('used');
 const qrCanvas = $('qrcanvas');
 
 /* Sanitizace cest: bez zdvojených lomítek */
-const API = (p) => `${String(API_BASE).replace(/\/+$/,'')}/${String(p).replace(/^\/+/,'')}`;
+const API = (p) => \`\${String(API_BASE).replace(/\\/+$/,'')}/\${String(p).replace(/^\\/+/, '')}\`;
 
 function normalizeCode(s){ return (s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3); }
 
@@ -98,7 +139,7 @@ async function fetchJSON(url, opts={}){
   const txt = await res.text().catch(()=> "");
   let data = null;
   try { data = txt ? JSON.parse(txt) : null; } catch { data = { raw: txt }; }
-  if(!res.ok) throw new Error((data && data.error) || (`${res.status} ${res.statusText}`));
+  if(!res.ok) throw new Error((data && data.error) || (\`\${res.status} \${res.statusText}\`));
   return data;
 }
 
@@ -115,7 +156,7 @@ function savePng(){
   const a = document.createElement('a');
   const code = normalizeCode(codeEl.value)||'CODE';
   const typ  = (typeEl.value||'QR').toUpperCase();
-  a.href = url; a.download = `qr_${typ}_${code}.png`;
+  a.href = url; a.download = \`qr_\${typ}_\${code}.png\`;
   document.body.appendChild(a); a.click(); a.remove();
 }
 
@@ -139,7 +180,6 @@ async function generate(){
   }
 
   try{
-    logEl.innerHTML = 'Generuji…';
     saveBtn.disabled = true;
 
     // BE volání
@@ -157,20 +197,17 @@ async function generate(){
     if (!wrapped || typeof wrapped.payload !== 'string') {
       throw new Error('Neplatná odpověď API (chybí payload).');
     }
-    const inner = resp.inner || JSON.parse(wrapped.payload);
 
-    // Vykresli QR (pozor: QR musí nést právě JSON.stringify(wrapped))
+    // Vykresli QR (QR nese právě JSON.stringify(wrapped))
     const qrText = JSON.stringify(wrapped);
     await drawQR(qrText);
 
-    payloadEl.textContent = JSON.stringify(inner, null, 2);
-    logEl.innerHTML = `<span class="ok">Hotovo:</span> ${inner.type} • kód ${inner.code} • platnost ${inner.expSec}s`;
     saveBtn.disabled = false;
 
     if (type === 'START') refreshUsed();
   }catch(e){
-    logEl.innerHTML = `<span class="err">Chyba:</span> ${e.message}`;
     saveBtn.disabled = true;
+    alert('Chyba: ' + e.message);
   }
 }
 
