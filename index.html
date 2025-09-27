@@ -1532,112 +1532,91 @@ addEventListener('keydown',e=>{
 });
 </script>
 
-<!-- Service Worker + nabídka aktualizace -->
 <script>
-if ('serviceWorker' in navigator) {
-  const SW_URL = './sw.js?v=2025-09-26-b';  // ↽ měň při každém release
-  const UPDATE_CHECK_MS = 0;                // 0 = jen při startu, můžeš dát třeba 6h
+  if ('serviceWorker' in navigator) {
+    const SW_URL = './sw.js?v=2025-09-27b'; // zvyšuj verzi při deployi
+    const FLAG = 'updateReady';
 
-  // drobný styl lišty (můžeš přesunout do CSS)
-  const style = document.createElement('style');
-  style.textContent = `
-  #updateBar{position:fixed;left:12px;right:12px;bottom:12px;z-index:100000;
-    display:flex;gap:10px;align-items:center;justify-content:space-between;
-    padding:10px 12px;border-radius:12px;background:#0b1020cc;color:#fff;
-    box-shadow:0 10px 30px rgba(0,0,0,.45);font:600 14px/1.4 system-ui,Segoe UI,Roboto}
-  #updateBar button{background:#22c55e;border:none;color:#0a0f1e;font-weight:800;
-    padding:8px 12px;border-radius:10px;cursor:pointer}
-  #updateBar .skip{background:#434d60;color:#fff;font-weight:700}
-  `;
-  document.head.appendChild(style);
-
-  function showUpdateBar(reg) {
-    if (document.getElementById('updateBar')) return;
-    const bar = document.createElement('div');
-    bar.id = 'updateBar';
-    bar.innerHTML = `
-      <span>Je dostupná nová verze aplikace.</span>
-      <div>
-        <button id="btnUpdNow">Aktualizovat</button>
-        <button id="btnUpdLater" class="skip">Později</button>
-      </div>
-    `;
-    document.body.appendChild(bar);
-
-    document.getElementById('btnUpdNow').onclick = () => {
-      const w = reg.waiting;
-      if (w) {
-        // řekni SW, ať přeskočí 'waiting'
-        w.postMessage({ type: 'SKIP_WAITING' });
-      }
+    const ui = {
+      bar: null, btn: null,
+      show() {
+        if (!this.bar) {
+          this.bar = document.createElement('div');
+          this.bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:#111827;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;z-index:99999';
+          this.bar.innerHTML = '<span>Je dostupná nová verze.</span>';
+          this.btn = document.createElement('button');
+          this.btn.textContent = 'Aktualizovat';
+          this.btn.style.cssText = 'margin-left:auto;background:#10b981;border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer';
+          this.bar.appendChild(this.btn);
+          document.body.appendChild(this.bar);
+          this.btn.addEventListener('click', () => {
+            // aktivuj novou verzi
+            if (window.__swWaiting) {
+              window.__swWaiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+        this.bar.style.display = 'flex';
+      },
+      hide() { if (this.bar) this.bar.style.display = 'none'; }
     };
-    document.getElementById('btnUpdLater').onclick = () => {
-      // Schovej, ale ponecháme flag v storage → při příštím startu se znovu ukáže
-      bar.remove();
-    };
-  }
 
-  window.addEventListener('load', async () => {
-    try {
-      const reg = await navigator.serviceWorker.register(SW_URL, { scope: './' });
-
-      // 1) po startu rovnou zkusíme update (pokud je online)
-      try { reg.update(); } catch {}
-
-      // 2) když je nová verze už připravená ve 'waiting' (typicky po minulém běhu)
-      if (reg.waiting) {
-        localStorage.setItem('updatePending', '1');
-        showUpdateBar(reg);
-      }
-
-      // 3) když SW najde novou verzi
-      reg.addEventListener('updatefound', () => {
-        const nw = reg.installing;
-        if (!nw) return;
-        nw.addEventListener('statechange', () => {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-            // nová verze nainstalována a čeká
-            localStorage.setItem('updatePending', '1');
-            showUpdateBar(reg);
-          }
-        });
-      });
-
-      // 4) když dojde k přepnutí kontroleru (po SKIP_WAITING)
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        localStorage.removeItem('updatePending');
-        // auto-reload na novou verzi
-        location.reload();
-      });
-
-      // 5) zobrazuj lištu při každém spuštění, pokud víme, že update čeká
-      // (typicky když minule už našel update, ale uživatel nedal "Aktualizovat")
-      if (localStorage.getItem('updatePending') === '1') {
-        // ujisti se, že máme reálný waiting worker (po startu může naběhnout o chvilku později)
-        const ensureWaiting = async () => {
-          await reg.update().catch(()=>{});
-          if (reg.waiting) showUpdateBar(reg);
-          else setTimeout(ensureWaiting, 1500);
-        };
-        ensureWaiting();
-      }
-
-      // 6) volitelné – kontrola při návratu do popředí a při návratu online
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) { try { reg.update(); } catch {} }
-      });
-      window.addEventListener('online', () => { try { reg.update(); } catch {} });
-
-      // 7) volitelně periodická kontrola během běhu
-      if (UPDATE_CHECK_MS > 0) {
-        setInterval(() => { try { reg.update(); } catch {} }, UPDATE_CHECK_MS);
-      }
-    } catch (e) {
-      // SW je volitelný – nepadat
+    function markReady(on) {
+      try { localStorage.setItem(FLAG, on ? '1' : ''); } catch {}
     }
-  });
-}
+    function isMarked() {
+      try { return localStorage.getItem(FLAG) === '1'; } catch { return false; }
+    }
+
+    window.addEventListener('load', async () => {
+      try {
+        const reg = await navigator.serviceWorker.register(SW_URL, { scope: './' });
+
+        // Každé spuštění aktivně zkusí najít update
+        reg.update().catch(()=>{});
+
+        // Když se objeví nová verze:
+        reg.addEventListener('updatefound', () => {
+          const sw = reg.installing;
+          if (!sw) return;
+          sw.addEventListener('statechange', () => {
+            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+              // Nová verze je připravená (waiting)
+              window.__swWaiting = reg.waiting || sw; // cache waiting
+              markReady(true);
+              ui.show();
+            }
+          });
+        });
+
+        // Pokud je čekající verze už teď (třeba po reloadu)
+        if (reg.waiting) {
+          window.__swWaiting = reg.waiting;
+          markReady(true);
+          ui.show();
+        } else if (isMarked()) {
+          // Bezpečnostní síť: když máme flag, ale waiting není → ještě jednou update()
+          reg.update().catch(()=>{});
+        }
+
+        // Když se aktivuje nový controller (po SKIP_WAITING) → reload
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          markReady(false);
+          location.reload();
+        });
+
+        // Pokud při dalším spuštění už běží nová verze, flag smažeme (není co nabízet)
+        if (!navigator.serviceWorker.controller) {
+          // první instalace – žádná lišta
+          markReady(false);
+        }
+      } catch (e) {
+        console.warn('SW reg failed', e);
+      }
+    });
+  }
 </script>
+
 
 
 <!-- QR overlay (statický náhled) -->
@@ -1833,6 +1812,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
