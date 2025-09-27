@@ -40,7 +40,6 @@
     border-radius:10px; padding:10px 12px; outline:none;
   }
   #code{min-width:220px;text-transform:uppercase}
-  #type{min-width:140px;appearance:auto}
 
   /* tlačítko generovat */
   .btn{
@@ -50,11 +49,19 @@
     cursor:pointer; box-shadow:0 6px 24px rgba(59,130,246,.35)
   }
 
+  /* tlačítko bude na samostatném řádku a uprostřed */
+  .row #gen{
+    display:block;
+    margin:12px auto 0;   /* auto = vycentrovat */
+    flex-basis:100%;      /* zalom na novou řádku v rámci .row */
+    width:100%;
+  }
+
   /* QR blok vycentrovaný */
   .qr-wrap{
     margin:26px auto 18px;
     display:block;
-    max-width:min(90vw, 660px);
+    max-width:min(90vw, 480px);
     background:#ffffff;          /* bílé okolí pro tichou zónu QR */
     border-radius:12px;
     padding:10px;
@@ -80,13 +87,6 @@
          padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.5);display:none}
   .toast.ok{border-color:rgba(16,185,129,.5)}
   .toast.err{border-color:rgba(239,68,68,.6)}
-  /* tlačítko bude na samostatném řádku a uprostřed */
-.row #gen{
-  display:block;
-  margin:12px auto 0;   /* auto = vycentrovat */
-  flex-basis:100%;      /* zalom na novou řádku v rámci .row */
-}
-
 </style>
 </head>
 <body>
@@ -100,19 +100,12 @@
         <label for="code">Kód (3 znaky)</label><br>
         <input id="code" maxlength="3" placeholder="A7K" autocomplete="off" class="input-white">
       </div>
-      <div>
-        <label for="type">Typ</label><br>
-        <select id="type" class="input-white">
-          <option value="START">START</option>
-          <option value="END">END</option>
-        </select>
-      </div>
-      <button id="gen" class="btn" style="margin-left:auto">Generovat QR</button>
+      <button id="gen" class="btn">Generovat QR</button>
     </div>
 
     <!-- vycentrovaný QR -->
     <div class="qr-wrap">
-      <canvas id="qrcanvas" width="640" height="640"></canvas>
+      <canvas id="qrcanvas" width="420" height="420"></canvas>
     </div>
 
     <!-- seznam použitých pod QR -->
@@ -194,7 +187,7 @@ async function generate(){
 
     await drawQR(JSON.stringify(wrapped));
     showToast(`${type} • ${code} • platnost 60 s`, 'ok');
-    if (type === 'START') refreshUsed();
+    refreshUsed();
   }catch(e){
     showToast('Chyba: ' + e.message, 'err');
   }
