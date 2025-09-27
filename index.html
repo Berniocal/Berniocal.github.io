@@ -889,8 +889,8 @@ function seededRandom(seed){
 }
 function hsl(h, s, l){ return {h, s, l}; } // 0-360, 0-1, 0-1
 
-function hslToRgb(h, s, l){
-  // očekává h v [0..360), s,l v [0..1]
+function hslToRgbArray(h, s, l){
+  // očekává h v [0..360), s,l v [0..1]; vrací [R,G,B] 0..255
   const c = (1 - Math.abs(2*l - 1)) * s;
   const hp = (h % 360) / 60;
   const x = c * (1 - Math.abs((hp % 2) - 1));
@@ -905,8 +905,10 @@ function hslToRgb(h, s, l){
   const R = Math.round((r+m)*255);
   const G = Math.round((g+m)*255);
   const B = Math.round((b+m)*255);
-  return `rgb(${R}, ${G}, ${B})`;
+  return [R, G, B];
 }
+function rgbToCss(rgb){ const [R,G,B] = rgb; return `rgb(${R}, ${G}, ${B})`; }
+
 function lerp(a, b, t){ return a + (b - a) * t; }
 function lerpHsl(a, b, t){
   // plynule i přes 360/0 (zkrácenou cestou)
@@ -960,7 +962,9 @@ function randomPastel(rand){
     const h = rand()*360;
     const s = 0.45 + rand()*0.35;   // 45–80 %
     const l = 0.62 + rand()*0.18;   // 62–80 %
-    const rgb = hslToRgb(h, s, l);  // [r,g,b] 0–255
+    const rgb = hslToRgbArray(h, s, l);  // [R,G,B]
+
+
 
     // vyřaď barvy podobné běžnému pozadí kalkulačky
     if (!isNearForbidden(rgb)) {
@@ -981,11 +985,12 @@ function pickNextTargets(rand){
 }
 
 function applyGradient(c1, c2){
-  const css1 = hslToRgb(c1.h, c1.s, c1.l);
-  const css2 = hslToRgb(c2.h, c2.s, c2.l);
-  document.documentElement.style.setProperty('--exam-c1', css1);
-  document.documentElement.style.setProperty('--exam-c2', css2);
+  const rgb1 = hslToRgbArray(c1.h, c1.s, c1.l);
+  const rgb2 = hslToRgbArray(c2.h, c2.s, c2.l);
+  document.documentElement.style.setProperty('--exam-c1', rgbToCss(rgb1));
+  document.documentElement.style.setProperty('--exam-c2', rgbToCss(rgb2));
 }
+
 
 function stepExamTween(now){
   if(!tween) return;
@@ -2050,6 +2055,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
