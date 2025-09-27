@@ -164,11 +164,12 @@
   @keyframes blink{50%{opacity:0}} sup{font-size:.7em}
   /* === TEST MODE UI === */
 
-/* Pozadí celé kalkulačky (jen box .calc), tlačítka necháváme původní */
+/* barvy řídíme přes CSS proměnné, tween dělá JS */
 body.exam-on .calc{
-  background: linear-gradient(#ffe8f2,#ffdbe8); /* světle růžové */
-  transition: background 150ms ease-in-out;
+  background: linear-gradient(var(--exam-c1, #ffe8f2), var(--exam-c2, #ffdbe8));
+  /* žádný CSS transition – plynulost zajišťuje JS */
 }
+
 
 /* Kód vpravo nahoře – stejná řádka a velikost jako ostatní badge */
 #bExamCode{
@@ -681,6 +682,7 @@ async function start(code){
   state.examActive = true;
   state.examCode = S.code;
   updateExamUI();
+  startExamColorCycleDeterministic(S.code);
 
   S.stillStart = 0;
   S.lastMoveAt = 0;
@@ -708,6 +710,7 @@ function finish(){
   state.examActive = false;
   state.examCode = '';
   updateExamUI();
+  stopExamColorCycle();
 
   state.resultShown = true;
   state.resultStr = "Zkouška ukončena.";
@@ -804,6 +807,134 @@ function updateExamUI(){
   }
 }
   window.updateExamUI = updateExamUI;
+// === Exam background tween (5 minut plynule) ===
+let examRAF = 0;
+
+function hashCode(str){
+  let h = 0; for (let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) >>> 0;
+  return h >>> 0;
+}
+function seededRandom(seed){
+  let x = (seed % 2147483647) || 1;
+  return () => (x = (x * 48271) % 2147483647) / 2147483647;
+}
+function hsl(h, s, l){ return {h, s, l}; } // 0-360, 0-1, 0-1
+
+function hslToRgb(h, s, l){
+  // očekává h v [0..360), s,l v [0..1]
+  const c = (1 - Math.abs(2*l - 1)) * s;
+  const hp = (h % 360) / 60;
+  const x = c * (1 - Math.abs((hp % 2) - 1));
+  let r=0,g=0,b=0;
+  if (0<=hp&&hp<1){ r=c; g=x; b=0; }
+  else if (1<=hp&&hp<2){ r=x; g=c; b=0; }
+  else if (2<=hp&&hp<3){ r=0; g=c; b=x; }
+  else if (3<=hp&&hp<4){ r=0; g=x; b=c; }
+  else if (4<=hp&&hp<5){ r=x; g=0; b=c; }
+  else { r=c; g=0; b=x; }
+  const m = l - c/2;
+  const R = Math.round((r+m)*255);
+  const G = Math.round((g+m)*255);
+  const B = Math.round((b+m)*255);
+  return `rgb(${R}, ${G}, ${B})`;
+}
+function lerp(a, b, t){ return a + (b - a) * t; }
+function lerpHsl(a, b, t){
+  // plynule i přes 360/0 (zkrácenou cestou)
+  let dh = ((b.h - a.h + 540) % 360) - 180;
+  return hsl(
+    (a.h + dh*t + 360) % 360,
+    lerp(a.s, b.s, t),
+    lerp(a.l, b.l, t)
+  );
+}
+
+let tween = null;
+/*
+  tween = {
+    rand,               // RNG pro deterministické další cíle
+    start1, start2,     // HSL start gradientu
+    end1, end2,         // HSL cíl gradientu
+    t0,                 // start timestamp (ms)
+    dur: 300000         // 5 minut
+  }
+*/
+
+function randomPastel(rand){
+  const h = Math.floor(rand()*360);
+  const s = 0.75 + rand()*0.15;   // 0.75–0.90
+  const l = 0.88 + rand()*0.07;   // 0.88–0.95
+  return hsl(h, s, l);
+}
+function pickNextTargets(rand){
+  return {
+    c1: randomPastel(rand),
+    c2: randomPastel(rand)
+  };
+}
+
+function applyGradient(c1, c2){
+  const css1 = hslToRgb(c1.h, c1.s, c1.l);
+  const css2 = hslToRgb(c2.h, c2.s, c2.l);
+  document.documentElement.style.setProperty('--exam-c1', css1);
+  document.documentElement.style.setProperty('--exam-c2', css2);
+}
+
+function stepExamTween(now){
+  if(!tween) return;
+  const {start1, start2, end1, end2, t0, dur, rand} = tween;
+  let p = (now - t0) / dur;
+  if (p >= 1){
+    // hotovo – nastav cíl, vygeneruj nový cíl, reset času
+    applyGradient(end1, end2);
+    const next = pickNextTargets(rand);
+    tween.start1 = end1;
+    tween.start2 = end2;
+    tween.end1 = next.c1;
+    tween.end2 = next.c2;
+    tween.t0 = now;
+    p = 0;
+  }
+  const cur1 = lerpHsl(tween.start1, tween.end1, Math.min(Math.max(p,0),1));
+  const cur2 = lerpHsl(tween.start2, tween.end2, Math.min(Math.max(p,0),1));
+  applyGradient(cur1, cur2);
+  examRAF = requestAnimationFrame(stepExamTween);
+}
+
+function startExamColorCycleDeterministic(code){
+  stopExamColorCycle(); // jistota čistého startu
+
+  const seed = hashCode(String(code||'').toUpperCase());
+  const rand = seededRandom(seed);
+
+  // Počáteční barvy: růžové, jak chceš (odpovídá původnímu)
+  const start1 = hsl(340, 0.75, 0.93); // cca #ffe8f2
+  const start2 = hsl(340, 0.70, 0.90); // cca #ffdbe8
+
+  const target = pickNextTargets(rand);
+
+  tween = {
+    rand,
+    start1, start2,
+    end1: target.c1,
+    end2: target.c2,
+    t0: performance.now(),
+    dur: 300000 // 5 minut v ms
+  };
+
+  // nastav okamžitě start, ať UI hned sedí
+  applyGradient(start1, start2);
+
+  examRAF = requestAnimationFrame(stepExamTween);
+}
+
+function stopExamColorCycle(){
+  if (examRAF){ cancelAnimationFrame(examRAF); examRAF = 0; }
+  tween = null;
+  // vrátit default (necháš klidně růžovou nebo smaž proměnné)
+  document.documentElement.style.removeProperty('--exam-c1');
+  document.documentElement.style.removeProperty('--exam-c2');
+}
 
 function clearForNewEntry(){ if(state.resultShown && !state.editAfterResult){ state.resultShown=false; state.resultStr=''; state.raw=''; state.cursor=0; } }
 function insRaw(txt){ clearForNewEntry(); state.raw=state.raw.slice(0,state.cursor)+txt+state.raw.slice(state.cursor); state.cursor+=txt.length; render(); }
@@ -1812,6 +1943,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
