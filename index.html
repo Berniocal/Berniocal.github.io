@@ -177,6 +177,10 @@ body.exam-on .calc{
   color:#b3125d;
   background:transparent; /* stejné jako ostatní .badge */
 }
+#bExamTimer{
+  color:#0bb37b;         /* jiná barva než kód */
+  font-weight:700;
+}
 
 </style>
 </head>
@@ -193,6 +197,7 @@ body.exam-on .calc{
         <span class="badge auto" id="bDMS">DMS</span>
         <span class="badge auto" id="bENG">ENG</span>
         <span class="badge auto" id="bMem">M</span>
+        <span class="badge auto" id="bExamTimer"></span>
         <span class="badge auto" id="bExamCode" style="margin-left:auto"></span>
       </div>
       <span class="res" id="res"></span>
@@ -514,8 +519,17 @@ const S = {
   lastMoveAt: 0,
   stillStart: 0,
   code: '',
-  netTimer: 0
+  netTimer: 0,
+  startAt:0, 
+  uptimeTimer:0
 };
+  // ⬇️ sem vlož
+  function refreshExamTimer(){
+    const el = document.getElementById('bExamTimer');
+    if (!el) return;
+    const mins = Math.floor((Date.now() - S.startAt) / 60000);
+    el.textContent = `${mins} min`;
+  }
 
 
   // UI overlay
@@ -561,6 +575,10 @@ function alertBuzzer(){
     S.locked = true; S.active = false; S.calibrating = false;
     detachSensors();
     if (S.netTimer) { clearInterval(S.netTimer); S.netTimer = 0; }
+   if (S.uptimeTimer) { clearInterval(S.uptimeTimer); S.uptimeTimer = 0; }
+   S.startAt = 0;
+   const tEl = document.getElementById('bExamTimer');
+   if (tEl) { tEl.classList.remove('on'); tEl.textContent = ''; }
 
     showLock(reason || "Aplikace byla zablokována.");
     alertBuzzer();
@@ -580,7 +598,6 @@ function onOnline(){
     lock("Zařízení je online (wifi/data).");
   }
 }
-
 
 // === Motion + Orientation senzory (s fallbackem) ===
 // === Motion + Orientation senzory (s fallbackem) ===
@@ -618,7 +635,6 @@ function attachSensors(){
       }
       return;
     }
-
 
     // Po grace okně detekujeme "zvednutí" – souvislý silnější pohyb
     if (now > S.grace) {
@@ -759,6 +775,15 @@ async function start(code){
   S.lastMoveAt = 0;
   S.grace = Date.now() + 1500; // krátká benevolence po položení
   attachSensors();
+  S.startAt = Date.now();
+refreshExamTimer(); // ať se hned ukáže 0 min
+
+if (S.uptimeTimer) { clearInterval(S.uptimeTimer); S.uptimeTimer = 0; }
+S.uptimeTimer = setInterval(() => {
+  if (!S.active) return;
+  refreshExamTimer();
+}, 6000);
+
 // periodický offline ping (1× spuštěný při startu)
 if (S.netTimer) { clearInterval(S.netTimer); S.netTimer = 0; }
 S.netTimer = setInterval(async () => {
@@ -787,6 +812,11 @@ function finish(){
   S.active = false;
   S.code = '';
 if (S.netTimer) { clearInterval(S.netTimer); S.netTimer = 0; }
+// vypnout minutový časovač a schovat badge
+ if (S.uptimeTimer) { clearInterval(S.uptimeTimer); S.uptimeTimer = 0; }
+S.startAt = 0;
+const tEl = document.getElementById('bExamTimer');
+if (tEl) { tEl.classList.remove('on'); tEl.textContent = ''; }
 
   // Vypni TEST UI (vrátí pozadí a skryje badge s kódem)
   state.examActive = false;
@@ -877,20 +907,36 @@ function render(){
   scrollToCaret();
 }
 function updateExamUI(){
-  // přepnutí růžového pozadí
   document.body.classList.toggle('exam-on', !!state.examActive);
 
-  // badge s kódem vpravo nahoře
-  const badge = document.getElementById('bExamCode');
-  if(!badge) return;
-  if(state.examActive && state.examCode){
-    badge.textContent = state.examCode.toUpperCase();
-    badge.classList.add('on');   // .badge.auto.on = viditelný
-  }else{
-    badge.textContent = '';
-    badge.classList.remove('on');
+  const badgeCode = document.getElementById('bExamCode');
+  const badgeTimer = document.getElementById('bExamTimer');
+
+  // kód z QR
+  if (badgeCode) {
+    if (state.examActive && state.examCode){
+      badgeCode.textContent = state.examCode.toUpperCase();
+      badgeCode.classList.add('on');
+    } else {
+      badgeCode.textContent = '';
+      badgeCode.classList.remove('on');
+    }
+  }
+
+  // timer vlevo – jen v exam-mode
+  if (badgeTimer) {
+    if (state.examActive){
+      badgeTimer.classList.add('on');
+      // barva odlišená od kódu (klidně uprav podle vkusu)
+      badgeTimer.style.color = '#0aa';
+      badgeTimer.style.fontWeight = '700';
+    } else {
+      badgeTimer.textContent = '';
+      badgeTimer.classList.remove('on');
+    }
   }
 }
+
   window.updateExamUI = updateExamUI;
 // === Exam background tween (5 minut plynule) ===
 let examRAF = 0;
@@ -2071,6 +2117,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
