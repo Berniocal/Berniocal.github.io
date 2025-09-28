@@ -531,6 +531,9 @@ const S = {
   uptimeTimer:0,
   pid: null,
   beatTimer: 0,
+   kbTimer: 0,
+  _kbHandler: null,
+  lastPD: 0
 
 };
   // ⬇️ sem vlož
@@ -585,6 +588,9 @@ function stopHeartbeat(){
     document.body.appendChild(ov);
     ui.overlay = ov; ui.text = t;
   }
+    // loguj tapy uvnitř aplikace (pro rozlišení, zda user ťukal u nás)
+document.addEventListener('pointerdown', () => { S.lastPD = Date.now(); }, { passive: true });
+
   function showLock(msg){
     ensureUI();
     ui.text.innerHTML = msg || "Porušení pravidel.";
@@ -747,11 +753,62 @@ function attachOrientationFallback(){
 
   window.addEventListener('deviceorientation', orientHandler, { passive:true });
 }
+function installKeyboardWatcher(){
+  const vv = window.visualViewport;
+  if (!vv) return; // starší prohlížeče
+
+  const onResize = () => {
+    if (!S.active || document.hidden) return;
+
+    const innerH = window.innerHeight || document.documentElement.clientHeight || vv.height;
+    const delta  = innerH - vv.height;
+    const frac   = delta / innerH;
+
+    const focusedInside =
+      document.activeElement &&
+      (document.activeElement.isContentEditable ||
+       ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName));
+
+    const likelyKb = delta > 140 && frac > 0.18;
+    const noRecentTapHere = !S.lastPD || (Date.now() - S.lastPD) > 800;
+
+    if (likelyKb && !focusedInside && noRecentTapHere) {
+      if (S.kbTimer) clearTimeout(S.kbTimer);
+      S.kbTimer = setTimeout(() => {
+        const innerH2 = window.innerHeight || document.documentElement.clientHeight || vv.height;
+        const delta2  = innerH2 - vv.height;
+        const stillKb = delta2 > 140;
+        const stillNoFocus =
+          !(document.activeElement &&
+            (document.activeElement.isContentEditable ||
+             ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)));
+
+        if (stillKb && stillNoFocus && !document.hidden) {
+          Sound.beep(200, 880);
+          lock("Zobrazení systémové klávesnice – pravděpodobně rychlá odpověď mimo aplikaci.");
+        }
+      }, 450);
+    } else {
+      if (S.kbTimer) { clearTimeout(S.kbTimer); S.kbTimer = 0; }
+    }
+  };
+
+  S._kbHandler = onResize;
+  vv.addEventListener('resize', onResize);
+}
+
+function removeKeyboardWatcher(){
+  const vv = window.visualViewport;
+  if (vv && S._kbHandler) vv.removeEventListener('resize', S._kbHandler);
+  S._kbHandler = null;
+  if (S.kbTimer) { clearTimeout(S.kbTimer); S.kbTimer = 0; }
+}
 
 function detachSensors(){
   document.removeEventListener('visibilitychange', onVisibility);
   window.removeEventListener('online', onNetChange);
   window.removeEventListener('offline', onNetChange); 
+   removeKeyboardWatcher();
   if (motionHandler) {
     window.removeEventListener('devicemotion', motionHandler);
     motionHandler = null;
@@ -851,6 +908,7 @@ try {
   S.lastMoveAt = 0;
   S.grace = Date.now() + 1500; // krátká benevolence po položení
   attachSensors();
+   if (window.visualViewport) installKeyboardWatcher();
   S.startAt = Date.now();
 refreshExamTimer(); // ať se hned ukáže 0 min
   startHeartbeat();
@@ -2207,6 +2265,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
