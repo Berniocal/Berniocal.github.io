@@ -177,22 +177,32 @@ function renderRoster(data){
   if (!list.length){ box.innerHTML = '—'; return; }
 
   const now = Math.floor(Date.now()/1000);
-  const rows = list.map(p => {
-    const since = formatAgo(now - (p.since||now));
-    const seen  = formatAgo(now - (p.lastSeen||now));
-    const flag  = (p.locked ? '🔒' : (!p.online ? '📴' : (!p.visible ? '🙈' : '✅')));
+   const rows = list.map(p => {
+    const since = formatAgo(now - (p.since || now));
+    const age   = now - (p.lastSeen || now);  // stáří posledního beatu (s)
+    const seen  = formatAgo(age);
+
+    // pokud jsme déle než 3 s bez beatu, považuj studenta za OFFLINE
+    const offlineByAge = age > 3;   // klidně dej 5–10, pokud chceš větší toleranci
+    const isOnline = p.online && !offlineByAge;
+
+    const flag  = (p.locked ? '🔒'
+                  : (!isOnline ? '📴'
+                  : (!p.visible ? '🙈' : '✅')));
+
     const state = [
       p.locked ? 'LOCKED' : '',
-      !p.online ? 'OFFLINE' : '',
+      !isOnline ? `OFFLINE${offlineByAge ? ' (bez hlášení)' : ''}` : '',
       !p.visible ? 'HIDDEN' : ''
     ].filter(Boolean).join(' · ') || 'OK';
+
     return `• <b>${p.name}</b> (${p.device||'?'}) — od: ${since}, naposledy: ${seen} ${flag} <span style="opacity:.8">(${state}${p.violations?`, #${p.violations}`:''}${p.lastReason?`, ${p.lastReason}`:''})</span>`;
   });
 
   box.innerHTML = rows.join('<br>');
 }
 
-async function pollRoom(){
+  async function pollRoom(){
   if (!currentCode) return;
   try{
     const res = await fetch(`${API_BASE.replace(/\/+$/,'')}/api/room/${currentCode}?t=${Date.now()}`, { cache:'no-store' });
