@@ -870,9 +870,9 @@ S.netTimer = setInterval(async () => {
     // OK – online, nic neděláme
   } catch {
     Sound.beep(200, 880);
-    lock("Ztráta internetu (ping selhal).");
+    ExamGuard.lock("Ztráta internetu (ping selhal).");
   }
-}, 3000);
+}, 2000);
 
 
 
@@ -2207,6 +2207,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
