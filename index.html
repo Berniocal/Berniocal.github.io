@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-32">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-33">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -2149,27 +2149,35 @@ const QR = (() => {
     btnX.addEventListener('pointerdown', () => stop(), { passive:true });
 
     // „Nahrát fotku QR“ uprostřed dole
-    pickBtn = document.createElement('button');
-    pickBtn.textContent = 'Nahrát fotku QR';
-    pickBtn.style.cssText = "position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:#3b82f6;border:none;color:#fff;padding:10px 14px;border-radius:999px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.2)";
-    pickBtn.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      releaseCamera();              // ukonči kameru, než otevřeme picker
-      fileInput.click();
-    }, { passive:false });
+pickBtn = document.createElement('button');
+pickBtn.textContent = 'Nahrát fotku QR';
+pickBtn.style.cssText =
+  "position:absolute;left:50%;bottom:12px;transform:translateX(-50%);" +
+  "background:#3b82f6;border:none;color:#fff;padding:10px 14px;" +
+  "border-radius:999px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.2)";
 
-    fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.style.display = 'none';
-    fileInput.onchange = onPickFile;
+// průhledný input přes tlačítko – uživatelský tap jde přímo do inputu
+fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = 'image/*';
+fileInput.multiple = false;
+// klíčové: ne display:none; musí být „viditelný“ (byť průhledný)
+fileInput.style.cssText =
+  "position:absolute;left:50%;bottom:12px;transform:translateX(-50%);" +
+  "opacity:0;width:calc(100vw - 40px);max-width:320px;height:44px;" +
+  "cursor:pointer;"; // pokryje tlačítko
 
-    box.appendChild(video);
-    box.appendChild(note);
-    overlay.appendChild(box);
-    overlay.appendChild(btnX);
-    overlay.appendChild(pickBtn);
-    overlay.appendChild(fileInput);
+// před otevřením pickeru uvolni kameru (iOS je citlivé na běžící stream)
+fileInput.addEventListener('pointerdown', () => { releaseCamera(); }, { passive:true });
+fileInput.addEventListener('change', onPickFile);
+
+box.appendChild(video);
+box.appendChild(note);
+overlay.appendChild(box);
+overlay.appendChild(btnX);
+overlay.appendChild(pickBtn);
+overlay.appendChild(fileInput);
+
     document.body.appendChild(overlay);
     overlay.addEventListener('pointerdown', (e) => {
   if (e.target === overlay) stop();
@@ -2440,6 +2448,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
