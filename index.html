@@ -2208,12 +2208,14 @@ const QR = (() => {
     }
   }
 
-  function stop(){
-    running = false;
-    cancelAnimationFrame(raf);
-    releaseCamera();
-    if (overlay) overlay.style.display = 'none';
-  }
+function stop(){
+  running = false;
+  cancelAnimationFrame(raf);
+  if (stopReader) { try { stopReader(); } catch {} ; stopReader = null; }
+  releaseCamera();
+  if (overlay) overlay.style.display = 'none';
+}
+
 
   function deliver(text){
     const inner = parseExamPayload(text) || {};
@@ -2252,70 +2254,102 @@ async function onPickFile(){
   else note.textContent = 'QR se z fotky nepodařilo přečíst. Zkuste znovu – ať je QR ostrý a vyplní většinu snímku.';
 }
 
+async function start(kind){ // 'START' | 'END'
+  if (running) return;
+  buildUI();
+  overlay.style.display = 'grid';
+  note.textContent = (kind === 'START') ? 'Namiřte na START QR…' : 'Namiřte na END QR…';
+  running = true;
 
-  async function start(kind){ // 'START' | 'END'
-    if (running) return;
-    buildUI();
-    overlay.style.display = 'grid';
-    note.textContent = (kind === 'START') ? 'Namiřte na START QR…' : 'Namiřte na END QR…';
-    running = true;
+  // kamera
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
+  } catch {
+    note.textContent = 'Kameru nelze otevřít. Zkontrolujte oprávnění pro kameru.';
+    running = false; return;
+  }
+  currentStream = stream;
+  video.srcObject = stream;
+  await video.play().catch(()=>{});
 
-    let stream = null;
-    try{
-      stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
-    }catch(e){
-      note.textContent = 'Kameru nelze otevřít. Zkontrolujte oprávnění pro kameru.';
-      running = false; return;
-    }
-    currentStream = stream;
-    video.srcObject = stream;
-    await video.play().catch(()=>{});
-
-   const useBD = ('BarcodeDetector' in window);
-let stopReader = null;
-
-if (useBD) {
-  const detector = new BarcodeDetector({ formats: ['qr_code'] });
-  const loop = async () => {
-    if (!running) return;
-    try {
-      const codes = await detector.detect(video);
-      const raw = codes && codes[0] && (codes[0].rawValue || codes[0].rawValueText || codes[0].rawValueString);
-      if (raw) {
-        const inner = parseExamPayload(raw);
-        if (inner && inner.code) {
-          const now = Math.floor(Date.now()/1000);
-          if (!inner.ts || !inner.expSec || now <= inner.ts + inner.expSec) return deliver(raw);
-          note.textContent = 'QR je propadlý. Vygenerujte nový.';
-        }
-      }
-    } catch(_) {}
-    raf = requestAnimationFrame(loop);
+  // plátno pro snapshoty
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently:true });
+  const snap = (scale=1) => {
+    const w = video.videoWidth, h = video.videoHeight;
+    if (!w || !h) return false;
+    canvas.width = Math.max(1, Math.floor(w*scale));
+    canvas.height = Math.max(1, Math.floor(h*scale));
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return true;
   };
-  raf = requestAnimationFrame(loop);
-} else {
-  await ensureFallback();
-  const hints = new Map();
-  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
-  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
-  const reader = new ZXing.BrowserMultiFormatReader(hints);
-  stopReader = reader.decodeFromVideoElementContinuously(video, (res, err) => {
-    if (!running) return;
-    if (res) {
-      const text = res.getText && res.getText();
-      const inner = text && parseExamPayload(text);
-      if (inner && inner.code) {
-        const now = Math.floor(Date.now()/1000);
-        if (!inner.ts || !inner.expSec || now <= inner.ts + inner.expSec) deliver(text);
-        else note.textContent = 'QR je propadlý. Vygenerujte nový.';
-      }
+  // pomocná detekce přes BD (nejdřív canvas, pak video)
+  async function detectWithBD(detector){
+    let codes = null;
+    if (snap(0.8)) { try { codes = await detector.detect(canvas); } catch {} }
+    if ((!codes || !codes.length)) { try { codes = await detector.detect(video); } catch {} }
+    const v = codes && codes[0] && (codes[0].rawValue || codes[0].rawValueText || codes[0].rawValueString);
+    return v || null;
+  }
+
+  // výstup
+  function maybeDeliver(raw){
+    const inner = raw && parseExamPayload(raw);
+    if (inner && inner.code) {
+      const now = Math.floor(Date.now()/1000);
+      if (!inner.ts || !inner.expSec || now <= inner.ts + inner.expSec) { deliver(raw); return true; }
+      note.textContent = 'QR je propadlý. Vygenerujte nový.';
     }
-    // chyby ignorujeme – pokračujeme dál
-  });
+    return false;
+  }
+
+  // 1) Zkus BarcodeDetector + (při neúspěchu) pád na ZXing
+  const useBD = ('BarcodeDetector' in window);
+  if (useBD) {
+    let bd = null;
+    try { bd = new BarcodeDetector({ formats:['qr_code'] }); } catch { bd = null; }
+
+    let emptyFrames = 0;
+    const loop = async () => {
+      if (!running) return;
+      try {
+        const raw = bd ? await detectWithBD(bd) : null;
+        if (raw && maybeDeliver(raw)) return;
+        emptyFrames++;
+        // když BD 30× po sobě nic nenašel → přepni na ZXing
+        if (emptyFrames > 30) return startZXing();
+      } catch {}
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+  } else {
+    await startZXing();
+  }
+
+  // 2) ZXing fallback (nebo primární, když BD není)
+  async function startZXing(){
+    await ensureFallback();
+    try {
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      const reader = new ZXing.BrowserMultiFormatReader(hints);
+      stopReader = reader.decodeFromVideoElementContinuously(video, (res/*,err*/) => {
+        if (!running) return;
+        if (res) {
+          const text = res.getText && res.getText();
+          maybeDeliver(text);
+        }
+      });
+    } catch {
+      note.textContent = 'Čtečku se nepodařilo inicializovat.';
+    }
+  }
 }
 
-// při stopnutí overlaye
+ 
 function stop(){
   running = false;
   cancelAnimationFrame(raf);
@@ -2334,6 +2368,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
