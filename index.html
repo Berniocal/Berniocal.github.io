@@ -2216,42 +2216,36 @@ const QR = (() => {
     else ExamGuard.finish();
   }
 
-  async function onPickFile(){
-    const f = fileInput.files && fileInput.files[0];
-    if (!f) return;
-    fileInput.value = '';
-    let text = null;
-    try{
-      const bmp = await createImageBitmap(f);
-      const cvs = document.createElement('canvas');
-      const ctx = cvs.getContext('2d', { willReadFrequently:true });
-      cvs.width = bmp.width; cvs.height = bmp.height;
-      ctx.drawImage(bmp, 0, 0);
+async function onPickFile(){
+  const f = fileInput.files && fileInput.files[0];
+  if (!f) return;
+  fileInput.value = '';
 
-      if ('BarcodeDetector' in window){
-        try{
-          const det = new BarcodeDetector({ formats:['qr_code'] });
-          const codes = await det.detect(cvs);
-          if (codes && codes[0]) text = codes[0].rawValue || codes[0].rawValueText || codes[0].rawValueString;
-        }catch(_){}
-      }
-      if (!text){
-        await ensureFallback();
-        if (window.ZXing && ZXing.BrowserMultiFormatReader){
-          const reader = new ZXing.BrowserMultiFormatReader();
-          const url = URL.createObjectURL(f);
-          const img = document.createElement('img');
-          img.src = url;
-          await img.decode().catch(()=>{});
-          const res = await reader.decodeFromImage(img).catch(()=>null);
-          URL.revokeObjectURL(url);
-          if (res) text = res.getText && res.getText();
-        }
-      }
-    } catch(_){}
-    if (text) deliver(text);
-    else note.textContent = 'QR se z fotky nepodařilo přečíst. Zkuste znovu – ať je QR ostrý a vyplní většinu snímku.';
-  }
+  let text = null;
+  try {
+    await ensureFallback(); // načte @zxing/library UMD, pokud není BarcodeDetector
+    if (window.ZXing && ZXing.BrowserMultiFormatReader) {
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+
+      const reader = new ZXing.BrowserMultiFormatReader(hints);
+
+      // načti obrázek „klasicky“, ať si Safari zachová EXIF orientaci
+      const url = URL.createObjectURL(f);
+      const img = document.createElement('img');
+      img.src = url;
+      await img.decode().catch(()=>{});
+      const res = await reader.decodeFromImage(img).catch(()=>null);
+      URL.revokeObjectURL(url);
+      if (res) text = res.getText && res.getText();
+    }
+  } catch(_) {}
+
+  if (text) deliver(text);
+  else note.textContent = 'QR se z fotky nepodařilo přečíst. Zkuste znovu – ať je QR ostrý a vyplní většinu snímku.';
+}
+
 
   async function start(kind){ // 'START' | 'END'
     if (running) return;
@@ -2271,49 +2265,58 @@ const QR = (() => {
     video.srcObject = stream;
     await video.play().catch(()=>{});
 
-    const useBD = ('BarcodeDetector' in window);
-    let detector = null;
-    if (useBD) detector = new BarcodeDetector({ formats:['qr_code'] });
-    else await ensureFallback();
+   const useBD = ('BarcodeDetector' in window);
+let stopReader = null;
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently:true });
-
-    async function tick(){
-      if (!running) return;
-      try{
-        let text = null;
-        if (useBD){
-          const codes = await detector.detect(video);
-          if (codes && codes[0]) text = codes[0].rawValue || codes[0].rawValueText || codes[0].rawValueString;
-        } else if (window.ZXing){
-          canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0);
-          const lumin = ZXing.BinaryBitmap.fromUint8Array(
-            ZXing.RGBLuminanceSource.fromCanvas(canvas).matrix
-          );
-          const res = new ZXing.MultiFormatReader().decode(lumin);
-          if (res) text = res.getText && res.getText();
+if (useBD) {
+  const detector = new BarcodeDetector({ formats: ['qr_code'] });
+  const loop = async () => {
+    if (!running) return;
+    try {
+      const codes = await detector.detect(video);
+      const raw = codes && codes[0] && (codes[0].rawValue || codes[0].rawValueText || codes[0].rawValueString);
+      if (raw) {
+        const inner = parseExamPayload(raw);
+        if (inner && inner.code) {
+          const now = Math.floor(Date.now()/1000);
+          if (!inner.ts || !inner.expSec || now <= inner.ts + inner.expSec) return deliver(raw);
+          note.textContent = 'QR je propadlý. Vygenerujte nový.';
         }
+      }
+    } catch(_) {}
+    raf = requestAnimationFrame(loop);
+  };
+  raf = requestAnimationFrame(loop);
+} else {
+  await ensureFallback();
+  const hints = new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
-        if (text){
-          const inner = parseExamPayload(text);
-          if (inner && inner.code){
-            const now = Math.floor(Date.now()/1000);
-            if (inner.ts && inner.expSec && (now > inner.ts + inner.expSec)){
-              note.textContent = 'QR je propadlý. Vygenerujte nový.';
-            } else {
-              deliver(text);
-              return;
-            }
-          }
-        }
-      }catch(_){ /* ignoruj */ }
-      raf = requestAnimationFrame(tick);
+  const reader = new ZXing.BrowserMultiFormatReader(hints);
+  stopReader = reader.decodeFromVideoElementContinuously(video, (res, err) => {
+    if (!running) return;
+    if (res) {
+      const text = res.getText && res.getText();
+      const inner = text && parseExamPayload(text);
+      if (inner && inner.code) {
+        const now = Math.floor(Date.now()/1000);
+        if (!inner.ts || !inner.expSec || now <= inner.ts + inner.expSec) deliver(text);
+        else note.textContent = 'QR je propadlý. Vygenerujte nový.';
+      }
     }
-    raf = requestAnimationFrame(tick);
-  }
+    // chyby ignorujeme – pokračujeme dál
+  });
+}
 
+// při stopnutí overlaye
+function stop(){
+  running = false;
+  cancelAnimationFrame(raf);
+  if (stopReader) { try { stopReader(); } catch {} stopReader = null; }
+  releaseCamera();
+  if (overlay) overlay.style.display = 'none';
+}
   return { start, stop };
 })();
 
@@ -2325,6 +2328,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
