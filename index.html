@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-30">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-31">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -2116,6 +2116,7 @@ document.addEventListener('visibilitychange', () => {
 const QR = (() => {
   let overlay, video, note, btnX, running = false, stopCb = null;
   let pickBtn, fileInput, currentStream = null, raf = 0;
+   let stopReader = null;
 
   function releaseCamera(){
     try{
@@ -2170,6 +2171,12 @@ const QR = (() => {
     overlay.appendChild(pickBtn);
     overlay.appendChild(fileInput);
     document.body.appendChild(overlay);
+    overlay.addEventListener('pointerdown', (e) => {
+  if (e.target === overlay) stop();
+}, { passive:true });
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && overlay && overlay.style.display !== 'none') stop();
+});
   }
 
   function parseExamPayload(text){
@@ -2208,14 +2215,6 @@ const QR = (() => {
     }
   }
 
-function stop(){
-  running = false;
-  cancelAnimationFrame(raf);
-  if (stopReader) { try { stopReader(); } catch {} ; stopReader = null; }
-  releaseCamera();
-  if (overlay) overlay.style.display = 'none';
-}
-
 
   function deliver(text){
     const inner = parseExamPayload(text) || {};
@@ -2231,7 +2230,7 @@ async function onPickFile(){
 
   let text = null;
   try {
-    await ensureFallback(); // načte @zxing/library UMD, pokud není BarcodeDetector
+    await ensureFallback();
     if (window.ZXing && ZXing.BrowserMultiFormatReader) {
       const hints = new Map();
       hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
@@ -2239,7 +2238,6 @@ async function onPickFile(){
 
       const reader = new ZXing.BrowserMultiFormatReader(hints);
 
-      // načti obrázek „klasicky“, ať si Safari zachová EXIF orientaci
       const url = URL.createObjectURL(f);
       const img = document.createElement('img');
       img.src = url;
@@ -2250,9 +2248,16 @@ async function onPickFile(){
     }
   } catch(_) {}
 
-  if (text) deliver(text);
-  else note.textContent = 'QR se z fotky nepodařilo přečíst. Zkuste znovu – ať je QR ostrý a vyplní většinu snímku.';
+  if (text) {
+    deliver(text);                 // úspěch → vše se samo zavře ve stop()
+    return;
+  }
+
+  // neúspěch → ukaž zprávu a ČISTĚ UKONČI, ať jde čtečka spustit znovu
+  note.textContent = 'QR se z fotky nepodařilo přečíst. Zkuste znovu – ať je QR ostrý a vyplní většinu snímku.';
+  setTimeout(() => { try { stop(); } catch {} }, 1200);
 }
+
 
 async function start(kind){ // 'START' | 'END'
   if (running) return;
@@ -2329,24 +2334,28 @@ async function start(kind){ // 'START' | 'END'
   }
 
   // 2) ZXing fallback (nebo primární, když BD není)
-  async function startZXing(){
-    await ensureFallback();
-    try {
-      const hints = new Map();
-      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
-      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-      const reader = new ZXing.BrowserMultiFormatReader(hints);
-      stopReader = reader.decodeFromVideoElementContinuously(video, (res/*,err*/) => {
-        if (!running) return;
-        if (res) {
-          const text = res.getText && res.getText();
-          maybeDeliver(text);
-        }
-      });
-    } catch {
-      note.textContent = 'Čtečku se nepodařilo inicializovat.';
-    }
+async function startZXing(){
+  await ensureFallback();
+  try {
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+
+    const reader = new ZXing.BrowserMultiFormatReader(hints);
+    stopReader = () => { try { reader.reset(); } catch {} };   // ⬅️ TADY
+
+    reader.decodeFromVideoElementContinuously(video, (res /*, err*/) => {
+      if (!running) return;
+      if (res) {
+        const text = res.getText && res.getText();
+        maybeDeliver(text);
+      }
+    });
+  } catch {
+    note.textContent = 'Čtečku se nepodařilo inicializovat.';
   }
+}
+
 }
 
  
@@ -2368,6 +2377,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
