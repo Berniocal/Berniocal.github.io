@@ -460,30 +460,35 @@ function deviceLabel(){
 }
 
 function renderModeMenu(){
-  // MODE 1: Deg/Rad/Gra
-  if (state.modeStage === 1) {
+  function setMenu(labels){
     exprEl.innerHTML =
       '<div class="modebar">' +
-        '<span class="label">Deg</span>' +
-        '<span class="label">Rad</span>' +
-        '<span class="label">Gra</span>' +
+        `<span class="label">${labels[0]}</span>` +
+        `<span class="label">${labels[1]}</span>` +
+        `<span class="label">${labels[2]}</span>` +
       '</div>';
-    resEl.classList.add('mode');   // ← zapni speciální layout pro čísla
+    resEl.classList.add('mode');
     resEl.innerHTML = '<div class="numrow"><span>1</span><span>2</span><span>3</span></div>';
+
+    // udělej horní 1/2/3 klikací
+    const row = resEl.querySelector('.numrow');
+    if (row){
+      Array.from(row.children).forEach((el, i)=>{
+        el.style.cursor = 'pointer';
+        el.addEventListener('pointerdown', (ev)=>{
+          ev.preventDefault();
+          handleMenuChoice(String(i+1));   // 1 → start, 2 → end, 3 → teacher
+        }, { passive:false });
+      });
+    }
     return true;
   }
-  // MODE 2: ExS/ExE/Tea
-  if (state.modeStage === 2) {
-    exprEl.innerHTML =
-      '<div class="modebar">' +
-        '<span class="label">ExS</span>' +
-        '<span class="label">ExE</span>' +
-        '<span class="label">Tea</span>' +
-      '</div>';
-    resEl.classList.add('mode');   // ← zapni speciální layout pro čísla
-    resEl.innerHTML = '<div class="numrow"><span>1</span><span>2</span><span>3</span></div>';
-    return true;
-  }
+  if (state.modeStage === 1) return setMenu(['Deg','Rad','Gra']);
+  if (state.modeStage === 2) return setMenu(['ExS','ExE','Tea']);
+  resEl.classList.remove('mode');
+  return false;
+}
+
 
   // Mimo MODE – vrať běžné chování (vpravo zarovnaný výsledek)
   resEl.classList.remove('mode');  // ← vypni speciální layout
@@ -2108,24 +2113,70 @@ addEventListener('keydown',e=>{
 </script>
 
 <script>
-const QR = (()=> {
-  let overlay, video, note, running = false;
-  let stopFn = null, raf = 0;
-  let currentStream = null;
-  let pickBtn, fileInput;
+const QR = (() => {
+  let overlay, video, note, btnX, running = false, stopCb = null;
+  let pickBtn, fileInput, currentStream = null, raf = 0;
 
   function releaseCamera(){
     try{
-      if (currentStream) {
-        currentStream.getTracks().forEach(t => t.stop());
-        currentStream = null;
-      }
-      if (video) video.srcObject = null;
+      if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); }
     }catch(_){}
+    currentStream = null;
+    if (video) video.srcObject = null;
+  }
+
+  function buildUI(){
+    if (overlay) return;
+
+    overlay = document.createElement('div');
+    overlay.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);place-items:center;z-index:99999";
+
+    const box = document.createElement('div');
+    box.style.cssText = "background:#111;color:#fff;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;align-items:center;max-width:92vw";
+
+    video = document.createElement('video');
+    video.playsInline = true;
+    video.muted = true;
+    video.style.cssText = "width:min(92vw,520px);max-height:70vh;border-radius:8px;background:#000";
+
+    note = document.createElement('div');
+    note.style.cssText = "font:600 16px/1.4 system-ui,Segoe UI,Roboto;opacity:.95;text-align:center";
+
+    btnX = document.createElement('button');
+    btnX.textContent = "Zavřít";
+    btnX.style.cssText = "position:absolute;right:12px;top:12px;background:#ef4444;color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer";
+    btnX.addEventListener('pointerdown', () => stop(), { passive:true });
+
+    // „Nahrát fotku QR“ uprostřed dole
+    pickBtn = document.createElement('button');
+    pickBtn.textContent = 'Nahrát fotku QR';
+    pickBtn.style.cssText = "position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:#3b82f6;border:none;color:#fff;padding:10px 14px;border-radius:999px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.2)";
+    pickBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      releaseCamera();              // ukonči kameru, než otevřeme picker
+      fileInput.click();
+    }, { passive:false });
+
+    fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    fileInput.onchange = onPickFile;
+
+    box.appendChild(video);
+    box.appendChild(note);
+    overlay.appendChild(box);
+    overlay.appendChild(btnX);
+    overlay.appendChild(pickBtn);
+    overlay.appendChild(fileInput);
+    document.body.appendChild(overlay);
   }
 
   function parseExamPayload(text){
-    try { const outer = JSON.parse(text); if (outer && outer.payload) return JSON.parse(outer.payload); } catch {}
+    try {
+      const outer = JSON.parse(text);
+      if (outer && outer.payload) return JSON.parse(outer.payload);
+    } catch {}
     try {
       if (/^https?:\/\//i.test(text)) {
         const u = new URL(text);
@@ -2138,7 +2189,7 @@ const QR = (()=> {
         if (code) return { code, type, ts, expSec };
       }
     } catch {}
-    if (/^[A-Za-z0-9]{1,8}\|/i.test(text)) {
+    if (/^[A-Za-z0-9]{1,8}\|/.test(text)) {
       const [code, type='START', ts='0', expSec='0'] = text.split('|');
       return { code, type: String(type).toUpperCase(), ts:+ts, expSec:+expSec };
     }
@@ -2151,115 +2202,84 @@ const QR = (()=> {
     try {
       await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src="./vendor/zxing.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
       return window.ZXing;
-    } catch(_) {
+    } catch {
       await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
       return window.ZXing;
     }
   }
 
-  function buildUI(){
-    if (overlay) return;
+  function stop(){
+    running = false;
+    cancelAnimationFrame(raf);
+    releaseCamera();
+    if (overlay) overlay.style.display = 'none';
+  }
 
-    overlay = document.createElement('div');
-    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;place-items:center;z-index:99999";
+  function deliver(text){
+    const inner = parseExamPayload(text) || {};
+    stop();
+    if ((inner.type || 'START').toUpperCase() === 'START') ExamGuard.start(inner.code);
+    else ExamGuard.finish();
+  }
 
-    const box = document.createElement('div');
-    box.style.cssText = "position:relative;width:min(520px,94vw);max-width:520px;background:#0b1220;border-radius:16px;padding:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);";
+  async function onPickFile(){
+    const f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    fileInput.value = '';
+    let text = null;
+    try{
+      const bmp = await createImageBitmap(f);
+      const cvs = document.createElement('canvas');
+      const ctx = cvs.getContext('2d', { willReadFrequently:true });
+      cvs.width = bmp.width; cvs.height = bmp.height;
+      ctx.drawImage(bmp, 0, 0);
 
-    video = document.createElement('video');
-    video.playsInline = true; video.muted = true; video.autoplay = true;
-    video.style.cssText = "display:block;width:100%;height:auto;border-radius:12px;border:2px solid #8ecae6;object-fit:cover;background:#000";
-
-    note = document.createElement('div');
-    note.style.cssText = "margin-top:10px;color:#fff;text-align:center;font-weight:700";
-
-    const btnX = document.createElement('button');
-    btnX.textContent = "Zavřít";
-    btnX.style.cssText = "position:absolute;top:10px;right:10px;background:#ef4444;color:#fff;border:none;border-radius:12px;padding:8px 12px;font-weight:700;cursor:pointer";
-    btnX.addEventListener('pointerdown', ()=> stop(), { passive:true });
-
-    // --- „Nahrát fotku QR“ doprostřed dole ---
-    pickBtn = document.createElement('button');
-    pickBtn.textContent = 'Nahrát fotku QR';
-    pickBtn.style.cssText = `
-      position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
-      background:#3b82f6;border:none;color:#fff;padding:10px 14px;
-      border-radius:999px;font-weight:600;box-shadow:0 8px 20px rgba(0,0,0,.2);
-    `;
-
-    fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.style.display = 'none';
-
-    pickBtn.addEventListener('pointerdown', (e)=>{
-      e.preventDefault();
-      releaseCamera();        // nejdřív uvolni běžící kameru
-      fileInput.click();      // pak otevři picker (Fotoaparát/Galerie)
-    }, { passive:false });
-
-    fileInput.onchange = async () => {
-      const f = fileInput.files && fileInput.files[0];
-      if (!f) return;
-      try {
-        const img = await createImageBitmap(f);
-        const cvs = document.createElement('canvas');
-        const c2 = cvs.getContext('2d', { willReadFrequently:true });
-        cvs.width = img.width; cvs.height = img.height;
-        c2.drawImage(img, 0, 0);
-
-        await ensureFallback();
-        const lumin = ZXing.BinaryBitmap.fromUint8Array(
-          ZXing.RGBLuminanceSource.fromCanvas(cvs).matrix
-        );
-        const res = new ZXing.MultiFormatReader().decode(lumin);
-        const text = res && res.getText && res.getText();
-
-        if (text) {
-          const inner = parseExamPayload(text) || {};
-          stop();
-          if ((inner.type || 'START').toUpperCase() === 'START') ExamGuard.start(inner.code);
-          else ExamGuard.finish();
-        } else {
-          note.textContent = 'QR se z fotky nepodařilo přečíst, zkus to znovu.';
-        }
-      } catch {
-        note.textContent = 'Nepovedlo se načíst QR z fotky.';
-      } finally {
-        fileInput.value = '';
+      if ('BarcodeDetector' in window){
+        try{
+          const det = new BarcodeDetector({ formats:['qr_code'] });
+          const codes = await det.detect(cvs);
+          if (codes && codes[0]) text = codes[0].rawValue || codes[0].rawValueText || codes[0].rawValueString;
+        }catch(_){}
       }
-    };
-
-    box.appendChild(video);
-    box.appendChild(note);
-    box.appendChild(btnX);
-    box.appendChild(pickBtn);
-    box.appendChild(fileInput);
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
+      if (!text){
+        await ensureFallback();
+        if (window.ZXing && ZXing.BrowserMultiFormatReader){
+          const reader = new ZXing.BrowserMultiFormatReader();
+          const url = URL.createObjectURL(f);
+          const img = document.createElement('img');
+          img.src = url;
+          await img.decode().catch(()=>{});
+          const res = await reader.decodeFromImage(img).catch(()=>null);
+          URL.revokeObjectURL(url);
+          if (res) text = res.getText && res.getText();
+        }
+      }
+    } catch(_){}
+    if (text) deliver(text);
+    else note.textContent = 'QR se z fotky nepodařilo přečíst. Zkuste znovu – ať je QR ostrý a vyplní většinu snímku.';
   }
 
   async function start(kind){ // 'START' | 'END'
     if (running) return;
     buildUI();
     overlay.style.display = 'grid';
-    note.textContent = kind==='START' ? "Namiřte na START QR…" : "Namiřte na END QR…";
+    note.textContent = (kind === 'START') ? 'Namiřte na START QR…' : 'Namiřte na END QR…';
     running = true;
 
     let stream = null;
     try{
       stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
-    }catch{
-      note.textContent = "Kameru se nepodařilo otevřít. Povolte přístup kameře.";
+    }catch(e){
+      note.textContent = 'Kameru nelze otevřít. Zkontrolujte oprávnění pro kameru.';
       running = false; return;
     }
     currentStream = stream;
     video.srcObject = stream;
-    await video.play();
+    await video.play().catch(()=>{});
 
     const useBD = ('BarcodeDetector' in window);
     let detector = null;
-    if (useBD) detector = new BarcodeDetector({ formats: ['qr_code'] });
+    if (useBD) detector = new BarcodeDetector({ formats:['qr_code'] });
     else await ensureFallback();
 
     const canvas = document.createElement('canvas');
@@ -2274,7 +2294,7 @@ const QR = (()=> {
           if (codes && codes[0]) text = codes[0].rawValue || codes[0].rawValueText || codes[0].rawValueString;
         } else if (window.ZXing){
           canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          ctx.drawImage(video, 0, 0);
           const lumin = ZXing.BinaryBitmap.fromUint8Array(
             ZXing.RGBLuminanceSource.fromCanvas(canvas).matrix
           );
@@ -2286,42 +2306,32 @@ const QR = (()=> {
           const inner = parseExamPayload(text);
           if (inner && inner.code){
             const now = Math.floor(Date.now()/1000);
-            if (inner.ts && inner.expSec && (now > inner.ts + inner.expSec)) {
-              note.textContent = "QR je propadlý. Vygenerujte nový.";
+            if (inner.ts && inner.expSec && (now > inner.ts + inner.expSec)){
+              note.textContent = 'QR je propadlý. Vygenerujte nový.';
             } else {
-              stop();
-              if ((inner.type || 'START').toUpperCase() === 'START') ExamGuard.start(inner.code);
-              else ExamGuard.finish();
+              deliver(text);
+              return;
             }
-            return;
           }
         }
-      } catch {}
+      }catch(_){ /* ignoruj */ }
       raf = requestAnimationFrame(tick);
     }
     raf = requestAnimationFrame(tick);
-
-    stopFn = ()=>{
-      cancelAnimationFrame(raf); raf = 0;
-      releaseCamera();
-      overlay.style.display = 'none';
-      running = false;
-    };
   }
-
-  function stop(){ if (stopFn) stopFn(); }
 
   return { start, stop };
 })();
 
-// zkratky pro menu
 function startExamScan(){ QR.start('START'); }
-function endExamScan(){   QR.start('END');   }
+function endExamScan(){   QR.start('END'); }
 </script>
+
 
 
 </body>
 </html>
+
 
 
 
