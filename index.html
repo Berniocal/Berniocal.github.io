@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-31">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-32">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -2222,41 +2222,104 @@ window.addEventListener('keydown', (e) => {
     if ((inner.type || 'START').toUpperCase() === 'START') ExamGuard.start(inner.code);
     else ExamGuard.finish();
   }
+function rotateCanvas(srcCanvas, deg){
+  const rad = (deg % 360) * Math.PI / 180;
+  const s = Math.sin(rad), c = Math.cos(rad);
+  const w = srcCanvas.width, h = srcCanvas.height;
+  // nový rozměr obálky
+  const nw = Math.abs(w * c) + Math.abs(h * s);
+  const nh = Math.abs(w * s) + Math.abs(h * c);
+  const dst = document.createElement('canvas');
+  dst.width = Math.max(1, Math.round(nw));
+  dst.height = Math.max(1, Math.round(nh));
+  const ctx = dst.getContext('2d', { willReadFrequently: true });
+  ctx.translate(dst.width / 2, dst.height / 2);
+  ctx.rotate(rad);
+  ctx.drawImage(srcCanvas, -w / 2, -h / 2);
+  return dst;
+}
 
 async function onPickFile(){
   const f = fileInput.files && fileInput.files[0];
   if (!f) return;
   fileInput.value = '';
 
-  let text = null;
+  // 1) Načti bitmapu s respektem k EXIF orientaci
+  let bmp = null;
   try {
-    await ensureFallback();
-    if (window.ZXing && ZXing.BrowserMultiFormatReader) {
-      const hints = new Map();
-      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
-      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    bmp = await createImageBitmap(f, { imageOrientation: 'from-image' });
+  } catch {
+    // fallback: přes <img>
+    const url = URL.createObjectURL(f);
+    const img = document.createElement('img');
+    img.src = url;
+    try { await img.decode(); } catch {}
+    bmp = img; // i <img> funguje jako ImageBitmapSource
+    URL.revokeObjectURL(url);
+  }
+  if (!bmp) { failHint(); return; }
 
-      const reader = new ZXing.BrowserMultiFormatReader(hints);
+  // 2) Připrav canvas (rozumné měřítko kvůli výkonu/úspěšnosti)
+  const MAX = 1280; // stačí; QR je kontrastní
+  const scale = Math.min(1, MAX / Math.max(bmp.width || bmp.videoWidth || 0, bmp.height || bmp.videoHeight || 0) || 1);
+  const canvas = document.createElement('canvas');
+  canvas.width  = Math.max(1, Math.floor((bmp.width  || bmp.videoWidth  || 1) * scale));
+  canvas.height = Math.max(1, Math.floor((bmp.height || bmp.videoHeight || 1) * scale));
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
 
-      const url = URL.createObjectURL(f);
-      const img = document.createElement('img');
-      img.src = url;
-      await img.decode().catch(()=>{});
-      const res = await reader.decodeFromImage(img).catch(()=>null);
-      URL.revokeObjectURL(url);
-      if (res) text = res.getText && res.getText();
+  // helper – zkus BarcodeDetector i ZXing nad zadaným canvase/maticí
+  async function detectOnce(cnv){
+    // a) BarcodeDetector (když je)
+    if ('BarcodeDetector' in window) {
+      try {
+        const bd = new BarcodeDetector({ formats: ['qr_code'] });
+        const r = await bd.detect(cnv);
+        if (r && r[0] && (r[0].rawValue || r[0].rawValueText)) {
+          return r[0].rawValue || r[0].rawValueText;
+        }
+      } catch {}
     }
-  } catch(_) {}
-
-  if (text) {
-    deliver(text);                 // úspěch → vše se samo zavře ve stop()
-    return;
+    // b) ZXing fallback
+    try {
+      await ensureFallback();
+      if (window.ZXing && ZXing.BrowserMultiFormatReader) {
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+        const reader = new ZXing.BrowserMultiFormatReader(hints);
+        // ZXing umí přímo z elementu canvas:
+        const res = await reader.decodeFromCanvas(cnv).catch(()=>null);
+        if (res) return res.getText && res.getText();
+      }
+    } catch {}
+    return null;
   }
 
-  // neúspěch → ukaž zprávu a ČISTĚ UKONČI, ať jde čtečka spustit znovu
-  note.textContent = 'QR se z fotky nepodařilo přečíst. Zkuste znovu – ať je QR ostrý a vyplní většinu snímku.';
-  setTimeout(() => { try { stop(); } catch {} }, 1200);
+  // 3) Zkus přímou detekci + rotace 0/90/180/270
+  let text = await detectOnce(canvas);
+  if (!text) {
+    // vytvoř otočené varianty
+    const rots = [90, 180, 270];
+    for (const deg of rots) {
+      const rc = rotateCanvas(canvas, deg);
+      text = await detectOnce(rc);
+      if (text) break;
+    }
+  }
+
+  if (text) {
+    deliver(text);     // úspěch → zavře overlay a spustí START/END
+  } else {
+    failHint();
+  }
+
+  function failHint(){
+    note.textContent = 'QR se z fotky nepodařilo přečíst. Zkuste znovu – ať je QR ostrý a vyplní většinu snímku.';
+    setTimeout(() => { try { stop(); } catch {} }, 1200);
+  }
 }
+
 
 
 async function start(kind){ // 'START' | 'END'
@@ -2377,6 +2440,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
