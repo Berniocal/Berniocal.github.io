@@ -2111,6 +2111,8 @@ addEventListener('keydown',e=>{
 <script>
 const QR = (()=> {
   let overlay, video, note, running=false, stopCb=null;
+  let pickBtn, fileInput;
+
 function parseExamPayload(text){
   // 1) nativní JSON {"v":1,"payload":"{...}"}
   try {
@@ -2163,6 +2165,68 @@ function parseExamPayload(text){
     btnX.textContent="Zavřít";
     btnX.onclick = stop;
     btnX.style.cssText="position:absolute;top:10px;right:10px;background:#ef4444;border:none;color:#fff;padding:8px 12px;border-radius:8px";
+    // --- Nahrát fotku QR (tlačítko + skrytý <input type="file">) ---
+pickBtn = document.createElement('button');
+pickBtn.textContent = 'Nahrát fotku QR';
+pickBtn.style.cssText = "position:absolute;top:10px;left:10px;background:#3b82f6;border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer";
+pickBtn.addEventListener('click', () => fileInput && fileInput.click(), { passive: true });
+
+fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = 'image/*';
+fileInput.capture = 'environment';   // iOS typicky nabídne foťák
+fileInput.style.display = 'none';
+
+fileInput.onchange = async () => {
+  const f = fileInput.files && fileInput.files[0];
+  if (!f) return;
+  try {
+    const img = await createImageBitmap(f);
+    const cvs = document.createElement('canvas');
+    const c2  = cvs.getContext('2d', { willReadFrequently:true });
+    cvs.width = img.width; cvs.height = img.height;
+    c2.drawImage(img, 0, 0);
+
+    // ZXing fallback pro dekódování z obrázku
+    await ensureFallback();
+    const lumin = ZXing.BinaryBitmap.fromUint8Array(
+      ZXing.RGBLuminanceSource.fromCanvas(cvs).matrix
+    );
+    const res = new ZXing.MultiFormatReader().decode(lumin);
+    const text = res && res.getText && res.getText();
+
+    if (text) {
+      const inner = parseExamPayload(text);
+      if (inner && inner.code) {
+        // stejná logika jako v live skenu
+        const now = Math.floor(Date.now()/1000);
+        if (inner.ts && inner.expSec && (now > inner.ts + inner.expSec)) {
+          note.textContent = "QR je propadlý. Vygenerujte nový.";
+        } else {
+          stop();
+          if ((inner.type || 'START').toUpperCase() === 'START') {
+            ExamGuard.start(inner.code);
+          } else {
+            ExamGuard.finish();
+          }
+        }
+      } else {
+        note.textContent = "QR se z fotky nepodařilo přečíst.";
+      }
+    } else {
+      note.textContent = "QR se z fotky nepodařilo přečíst.";
+    }
+  } catch (e) {
+    note.textContent = "Nepovedlo se načíst QR z fotky.";
+  } finally {
+    fileInput.value = '';
+  }
+};
+
+// umístění do overlaye (vlevo nahoře), input je skrytý
+overlay.appendChild(pickBtn);
+overlay.appendChild(fileInput);
+
     box.appendChild(video); box.appendChild(note); overlay.appendChild(box); overlay.appendChild(btnX);
     document.body.appendChild(overlay);
   }
@@ -2265,6 +2329,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
