@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-29">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -2026,6 +2026,12 @@ addEventListener('keydown',e=>{
 
         // Každé spuštění aktivně zkusí najít update
         reg.update().catch(()=>{});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    navigator.serviceWorker.getRegistration()
+      .then(reg => reg && reg.update().catch(()=>{}));
+  }
+});
 
         // Když se objeví nová verze:
         reg.addEventListener('updatefound', () => {
@@ -2328,6 +2334,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
