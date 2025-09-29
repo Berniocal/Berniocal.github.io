@@ -1,7 +1,8 @@
 {
   "name": "Bernio",
   "short_name": "Bernio",
-  "start_url": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0f1722",
   "theme_color": "#0f1722",
@@ -34,3 +35,4 @@
     }
   ]
 }
+
