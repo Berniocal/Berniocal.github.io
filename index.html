@@ -2112,7 +2112,16 @@ addEventListener('keydown',e=>{
 const QR = (()=> {
   let overlay, video, note, running=false, stopCb=null;
   let pickBtn, fileInput;
-
+  let currentStream = null;
+function releaseCamera(){
+  try{
+    if (currentStream) {
+      currentStream.getTracks().forEach(t => t.stop());
+      currentStream = null;
+    }
+    if (video) video.srcObject = null;
+  }catch(_){}
+}
 function parseExamPayload(text){
   // 1) nativní JSON {"v":1,"payload":"{...}"}
   try {
@@ -2150,44 +2159,39 @@ function parseExamPayload(text){
   return null;
 }
 
-  function buildUI(){
-    if(overlay) return;
-    overlay = document.createElement('div');
-    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;z-index:99998;color:#fff";
-    const box = document.createElement('div');
-    box.style.cssText="position:absolute;inset:0;display:grid;place-items:center;padding:14px";
-    video = document.createElement('video');
-    video.setAttribute('playsinline','');
-    video.style.cssText="max-width:96vw;max-height:60vh;border:2px solid #7dd3fc;border-radius:12px;background:#000";
-    note = document.createElement('div');
-    note.style.cssText="margin-top:10px;font:600 16px/1.4 system-ui,Segoe UI,Roboto;text-align:center";
-    const btnX=document.createElement('button');
-    btnX.textContent="Zavřít";
-    btnX.onclick = stop;
-    btnX.style.cssText="position:absolute;top:10px;right:10px;background:#ef4444;border:none;color:#fff;padding:8px 12px;border-radius:8px";
-    // --- Nahrát fotku QR (tlačítko + skrytý <input type="file">) ---
 pickBtn = document.createElement('button');
 pickBtn.textContent = 'Nahrát fotku QR';
-pickBtn.style.cssText = "position:absolute;top:10px;left:10px;background:#3b82f6;border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer";
-pickBtn.addEventListener('click', () => fileInput && fileInput.click(), { passive: true });
+pickBtn.style.cssText = `
+  position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
+  background:#3b82f6;border:none;color:#fff;padding:10px 14px;
+  border-radius:999px;font-weight:600;box-shadow:0 8px 20px rgba(0,0,0,.2);
+`;
 
 fileInput = document.createElement('input');
 fileInput.type = 'file';
 fileInput.accept = 'image/*';
-fileInput.capture = 'environment';   // iOS typicky nabídne foťák
+// fileInput.capture = 'environment'; // ← NEchceme, blokuje to na Androidu paralelně běžící kameru
 fileInput.style.display = 'none';
+
+// otevři picker – ale NEJDŘÍV uvolníme běžící kameru
+pickBtn.addEventListener('pointerdown', (e)=>{
+  e.preventDefault();
+  releaseCamera();
+  fileInput.click();
+}, { passive:false });
 
 fileInput.onchange = async () => {
   const f = fileInput.files && fileInput.files[0];
   if (!f) return;
+
   try {
     const img = await createImageBitmap(f);
     const cvs = document.createElement('canvas');
-    const c2  = cvs.getContext('2d', { willReadFrequently:true });
+    const c2 = cvs.getContext('2d', { willReadFrequently:true });
     cvs.width = img.width; cvs.height = img.height;
     c2.drawImage(img, 0, 0);
 
-    // ZXing fallback pro dekódování z obrázku
+    // Použij ZXing fallback (funguje i offline v PWA)
     await ensureFallback();
     const lumin = ZXing.BinaryBitmap.fromUint8Array(
       ZXing.RGBLuminanceSource.fromCanvas(cvs).matrix
@@ -2196,36 +2200,37 @@ fileInput.onchange = async () => {
     const text = res && res.getText && res.getText();
 
     if (text) {
-      const inner = parseExamPayload(text);
-      if (inner && inner.code) {
-        // stejná logika jako v live skenu
-        const now = Math.floor(Date.now()/1000);
-        if (inner.ts && inner.expSec && (now > inner.ts + inner.expSec)) {
-          note.textContent = "QR je propadlý. Vygenerujte nový.";
-        } else {
-          stop();
-          if ((inner.type || 'START').toUpperCase() === 'START') {
-            ExamGuard.start(inner.code);
-          } else {
-            ExamGuard.finish();
-          }
-        }
-      } else {
-        note.textContent = "QR se z fotky nepodařilo přečíst.";
-      }
+      const inner = parseExamPayload(text) || {};
+      stop(); // zavřít overlay
+      if ((inner.type || 'START').toUpperCase() === 'START') ExamGuard.start(inner.code);
+      else ExamGuard.finish();
     } else {
-      note.textContent = "QR se z fotky nepodařilo přečíst.";
+      note.textContent = 'QR se z fotky nepodařilo přečíst, zkus to znovu.';
+      // volitelně zase nastartuj kameru, ať uživatel může hned mířit
+      try{
+        const s = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
+        currentStream = s;
+        video.srcObject = s;
+        await video.play();
+      }catch(_){}
     }
-  } catch (e) {
-    note.textContent = "Nepovedlo se načíst QR z fotky.";
+  } catch {
+    note.textContent = 'Nepovedlo se načíst QR z fotky.';
+    // pokus o návrat ke kameře
+    try{
+      const s = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
+      currentStream = s;
+      video.srcObject = s;
+      await video.play();
+    }catch(_){}
   } finally {
     fileInput.value = '';
   }
 };
 
-// umístění do overlaye (vlevo nahoře), input je skrytý
 overlay.appendChild(pickBtn);
 overlay.appendChild(fileInput);
+
 
     box.appendChild(video); box.appendChild(note); overlay.appendChild(box); overlay.appendChild(btnX);
     document.body.appendChild(overlay);
@@ -2259,6 +2264,7 @@ overlay.appendChild(fileInput);
       running=false; return;
     }
     video.srcObject = stream; await video.play();
+    currentStream = stream; 
 
     const useBD = ('BarcodeDetector' in window);
     let detector = null;
@@ -2319,7 +2325,12 @@ overlay.appendChild(fileInput);
   }
 
   function stop(){ if(stopCb) stopCb(); }
-
+stopCb = ()=>{
+  cancelAnimationFrame(raf);
+  releaseCamera();        // ← místo ručního stopování tracků
+  overlay.style.display='none';
+  running=false;
+};
   return { start, stop };
 })();
 
@@ -2329,6 +2340,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
