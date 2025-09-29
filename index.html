@@ -488,13 +488,7 @@ function renderModeMenu(){
   resEl.classList.remove('mode');
   return false;
 }
-
-
-  // Mimo MODE – vrať běžné chování (vpravo zarovnaný výsledek)
-  resEl.classList.remove('mode');  // ← vypni speciální layout
-  return false;
-}
-
+ 
 // akce menu čísel 1/2/3
 function handleMenuChoice(digit){
   if(state.modeStage===1){
@@ -2331,6 +2325,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
