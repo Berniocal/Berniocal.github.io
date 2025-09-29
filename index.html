@@ -2107,139 +2107,47 @@ addEventListener('keydown',e=>{
 })();
 </script>
 
-<!-- QR SCANNER (START/END) -->
 <script>
 const QR = (()=> {
-  let overlay, video, note, running=false, stopCb=null;
-  let pickBtn, fileInput;
+  let overlay, video, note, running = false;
+  let stopFn = null, raf = 0;
   let currentStream = null;
-function releaseCamera(){
-  try{
-    if (currentStream) {
-      currentStream.getTracks().forEach(t => t.stop());
-      currentStream = null;
-    }
-    if (video) video.srcObject = null;
-  }catch(_){}
-}
-function parseExamPayload(text){
-  // 1) nativní JSON {"v":1,"payload":"{...}"}
-  try {
-    const outer = JSON.parse(text);
-    if (outer && outer.payload) {
-      const inner = JSON.parse(outer.payload);
-      return inner; // očekáváme { type, code, ts, expSec }
-    }
-  } catch {}
+  let pickBtn, fileInput;
 
-  // 2) URL s ?payload=... (URL-encoded JSON)
-  try {
-    if (/^https?:\/\//i.test(text)) {
-      const u = new URL(text);
-      const p = u.searchParams.get('payload') || u.searchParams.get('p') || u.hash.replace(/^#/, '');
-      if (p) {
-        const inner = JSON.parse(decodeURIComponent(p));
-        return inner;
-      }
-      // 2b) fajnový fallback: ?code=XYZ&type=START&ts=...&expSec=...
-      const code = u.searchParams.get('code');
-      const type = (u.searchParams.get('type') || 'START').toUpperCase();
-      const ts = +(u.searchParams.get('ts') || 0);
-      const expSec = +(u.searchParams.get('expSec') || 0);
-      if (code) return { code, type, ts, expSec };
-    }
-  } catch {}
-
-  // 3) "CODE|TYPE|TS|EXP" (např. "A7K|START|1730000000|900")
-  if (/^[A-Za-z0-9]{1,8}\|/i.test(text)) {
-    const [code, type='START', ts='0', expSec='0'] = text.split('|');
-    return { code, type: String(type).toUpperCase(), ts: +ts, expSec: +expSec };
-  }
-
-  return null;
-}
-
-pickBtn = document.createElement('button');
-pickBtn.textContent = 'Nahrát fotku QR';
-pickBtn.style.cssText = `
-  position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
-  background:#3b82f6;border:none;color:#fff;padding:10px 14px;
-  border-radius:999px;font-weight:600;box-shadow:0 8px 20px rgba(0,0,0,.2);
-`;
-
-fileInput = document.createElement('input');
-fileInput.type = 'file';
-fileInput.accept = 'image/*';
-// fileInput.capture = 'environment'; // ← NEchceme, blokuje to na Androidu paralelně běžící kameru
-fileInput.style.display = 'none';
-
-// otevři picker – ale NEJDŘÍV uvolníme běžící kameru
-pickBtn.addEventListener('pointerdown', (e)=>{
-  e.preventDefault();
-  releaseCamera();
-  fileInput.click();
-}, { passive:false });
-
-fileInput.onchange = async () => {
-  const f = fileInput.files && fileInput.files[0];
-  if (!f) return;
-
-  try {
-    const img = await createImageBitmap(f);
-    const cvs = document.createElement('canvas');
-    const c2 = cvs.getContext('2d', { willReadFrequently:true });
-    cvs.width = img.width; cvs.height = img.height;
-    c2.drawImage(img, 0, 0);
-
-    // Použij ZXing fallback (funguje i offline v PWA)
-    await ensureFallback();
-    const lumin = ZXing.BinaryBitmap.fromUint8Array(
-      ZXing.RGBLuminanceSource.fromCanvas(cvs).matrix
-    );
-    const res = new ZXing.MultiFormatReader().decode(lumin);
-    const text = res && res.getText && res.getText();
-
-    if (text) {
-      const inner = parseExamPayload(text) || {};
-      stop(); // zavřít overlay
-      if ((inner.type || 'START').toUpperCase() === 'START') ExamGuard.start(inner.code);
-      else ExamGuard.finish();
-    } else {
-      note.textContent = 'QR se z fotky nepodařilo přečíst, zkus to znovu.';
-      // volitelně zase nastartuj kameru, ať uživatel může hned mířit
-      try{
-        const s = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
-        currentStream = s;
-        video.srcObject = s;
-        await video.play();
-      }catch(_){}
-    }
-  } catch {
-    note.textContent = 'Nepovedlo se načíst QR z fotky.';
-    // pokus o návrat ke kameře
+  function releaseCamera(){
     try{
-      const s = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
-      currentStream = s;
-      video.srcObject = s;
-      await video.play();
+      if (currentStream) {
+        currentStream.getTracks().forEach(t => t.stop());
+        currentStream = null;
+      }
+      if (video) video.srcObject = null;
     }catch(_){}
-  } finally {
-    fileInput.value = '';
   }
-};
 
-overlay.appendChild(pickBtn);
-overlay.appendChild(fileInput);
-
-
-    box.appendChild(video); box.appendChild(note); overlay.appendChild(box); overlay.appendChild(btnX);
-    document.body.appendChild(overlay);
+  function parseExamPayload(text){
+    try { const outer = JSON.parse(text); if (outer && outer.payload) return JSON.parse(outer.payload); } catch {}
+    try {
+      if (/^https?:\/\//i.test(text)) {
+        const u = new URL(text);
+        const p = u.searchParams.get('payload') || u.searchParams.get('p') || u.hash.replace(/^#/,'');
+        if (p) return JSON.parse(decodeURIComponent(p));
+        const code = u.searchParams.get('code');
+        const type = (u.searchParams.get('type') || 'START').toUpperCase();
+        const ts = +(u.searchParams.get('ts') || 0);
+        const expSec = +(u.searchParams.get('expSec') || 0);
+        if (code) return { code, type, ts, expSec };
+      }
+    } catch {}
+    if (/^[A-Za-z0-9]{1,8}\|/i.test(text)) {
+      const [code, type='START', ts='0', expSec='0'] = text.split('|');
+      return { code, type: String(type).toUpperCase(), ts:+ts, expSec:+expSec };
+    }
+    return null;
   }
 
   async function ensureFallback(){
-    if('BarcodeDetector' in window) return null;
-    if(window.ZXing) return window.ZXing;
-    // Preferuj lokální build (funguje i offline v PWA). Pokud chybí, poslední šance CDN.
+    if ('BarcodeDetector' in window) return null;
+    if (window.ZXing) return window.ZXing;
     try {
       await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src="./vendor/zxing.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
       return window.ZXing;
@@ -2249,97 +2157,172 @@ overlay.appendChild(fileInput);
     }
   }
 
-  async function start(kind){ // kind: 'START' | 'END'
-    if(running) return;
-    buildUI();
-    overlay.style.display='block';
-    note.textContent = kind==='START' ? "Namiřte na START QR…" : "Namiřte na END QR…";
-    running=true;
+  function buildUI(){
+    if (overlay) return;
 
-    let stream=null;
+    overlay = document.createElement('div');
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;place-items:center;z-index:99999";
+
+    const box = document.createElement('div');
+    box.style.cssText = "position:relative;width:min(520px,94vw);max-width:520px;background:#0b1220;border-radius:16px;padding:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);";
+
+    video = document.createElement('video');
+    video.playsInline = true; video.muted = true; video.autoplay = true;
+    video.style.cssText = "display:block;width:100%;height:auto;border-radius:12px;border:2px solid #8ecae6;object-fit:cover;background:#000";
+
+    note = document.createElement('div');
+    note.style.cssText = "margin-top:10px;color:#fff;text-align:center;font-weight:700";
+
+    const btnX = document.createElement('button');
+    btnX.textContent = "Zavřít";
+    btnX.style.cssText = "position:absolute;top:10px;right:10px;background:#ef4444;color:#fff;border:none;border-radius:12px;padding:8px 12px;font-weight:700;cursor:pointer";
+    btnX.addEventListener('pointerdown', ()=> stop(), { passive:true });
+
+    // --- „Nahrát fotku QR“ doprostřed dole ---
+    pickBtn = document.createElement('button');
+    pickBtn.textContent = 'Nahrát fotku QR';
+    pickBtn.style.cssText = `
+      position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
+      background:#3b82f6;border:none;color:#fff;padding:10px 14px;
+      border-radius:999px;font-weight:600;box-shadow:0 8px 20px rgba(0,0,0,.2);
+    `;
+
+    fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+
+    pickBtn.addEventListener('pointerdown', (e)=>{
+      e.preventDefault();
+      releaseCamera();        // nejdřív uvolni běžící kameru
+      fileInput.click();      // pak otevři picker (Fotoaparát/Galerie)
+    }, { passive:false });
+
+    fileInput.onchange = async () => {
+      const f = fileInput.files && fileInput.files[0];
+      if (!f) return;
+      try {
+        const img = await createImageBitmap(f);
+        const cvs = document.createElement('canvas');
+        const c2 = cvs.getContext('2d', { willReadFrequently:true });
+        cvs.width = img.width; cvs.height = img.height;
+        c2.drawImage(img, 0, 0);
+
+        await ensureFallback();
+        const lumin = ZXing.BinaryBitmap.fromUint8Array(
+          ZXing.RGBLuminanceSource.fromCanvas(cvs).matrix
+        );
+        const res = new ZXing.MultiFormatReader().decode(lumin);
+        const text = res && res.getText && res.getText();
+
+        if (text) {
+          const inner = parseExamPayload(text) || {};
+          stop();
+          if ((inner.type || 'START').toUpperCase() === 'START') ExamGuard.start(inner.code);
+          else ExamGuard.finish();
+        } else {
+          note.textContent = 'QR se z fotky nepodařilo přečíst, zkus to znovu.';
+        }
+      } catch {
+        note.textContent = 'Nepovedlo se načíst QR z fotky.';
+      } finally {
+        fileInput.value = '';
+      }
+    };
+
+    box.appendChild(video);
+    box.appendChild(note);
+    box.appendChild(btnX);
+    box.appendChild(pickBtn);
+    box.appendChild(fileInput);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+  }
+
+  async function start(kind){ // 'START' | 'END'
+    if (running) return;
+    buildUI();
+    overlay.style.display = 'grid';
+    note.textContent = kind==='START' ? "Namiřte na START QR…" : "Namiřte na END QR…";
+    running = true;
+
+    let stream = null;
     try{
       stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
-    }catch(e){
+    }catch{
       note.textContent = "Kameru se nepodařilo otevřít. Povolte přístup kameře.";
-      running=false; return;
+      running = false; return;
     }
-    video.srcObject = stream; await video.play();
-    currentStream = stream; 
+    currentStream = stream;
+    video.srcObject = stream;
+    await video.play();
 
     const useBD = ('BarcodeDetector' in window);
     let detector = null;
-    if(useBD){ detector = new BarcodeDetector({ formats: ['qr_code'] }); }
-    else { await ensureFallback(); }
+    if (useBD) detector = new BarcodeDetector({ formats: ['qr_code'] });
+    else await ensureFallback();
 
-    let raf=0;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently:true });
 
     async function tick(){
-      if(!running) return;
+      if (!running) return;
       try{
-        let text=null;
-        if(useBD){
+        let text = null;
+        if (useBD){
           const codes = await detector.detect(video);
-          if(codes && codes[0]) text = codes[0].rawValue || codes[0].rawValueText || codes[0].rawValueString;
-        }else if(window.ZXing){
+          if (codes && codes[0]) text = codes[0].rawValue || codes[0].rawValueText || codes[0].rawValueString;
+        } else if (window.ZXing){
           canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0,0, canvas.width, canvas.height);
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const lumin = ZXing.BinaryBitmap.fromUint8Array(
             ZXing.RGBLuminanceSource.fromCanvas(canvas).matrix
           );
           const res = new ZXing.MultiFormatReader().decode(lumin);
-          if(res) text = res.getText && res.getText();
+          if (res) text = res.getText && res.getText();
         }
 
-        if (text) {
-  const inner = parseExamPayload(text);
-  if (inner && inner.code) {
-    const now = Math.floor(Date.now()/1000);
-    if (inner.ts && inner.expSec && (now > inner.ts + inner.expSec)) {
-      note.textContent = "QR je propadlý. Vygenerujte nový.";
-    } else {
-      stop();
-      if ((inner.type || 'START').toUpperCase() === 'START') {
-        ExamGuard.start(inner.code);
-      } else {
-        ExamGuard.finish();
-      }
-    }
-    return;
-  }
-  // nepřečtený formát – pokračuj ve skenu
-}
-
-      }catch(_){ /* ignoruj */ }
+        if (text){
+          const inner = parseExamPayload(text);
+          if (inner && inner.code){
+            const now = Math.floor(Date.now()/1000);
+            if (inner.ts && inner.expSec && (now > inner.ts + inner.expSec)) {
+              note.textContent = "QR je propadlý. Vygenerujte nový.";
+            } else {
+              stop();
+              if ((inner.type || 'START').toUpperCase() === 'START') ExamGuard.start(inner.code);
+              else ExamGuard.finish();
+            }
+            return;
+          }
+        }
+      } catch {}
       raf = requestAnimationFrame(tick);
     }
     raf = requestAnimationFrame(tick);
 
-    stopCb = ()=>{
-      cancelAnimationFrame(raf);
-      if(stream){ stream.getTracks().forEach(t=>t.stop()); }
-      overlay.style.display='none';
-      running=false;
+    stopFn = ()=>{
+      cancelAnimationFrame(raf); raf = 0;
+      releaseCamera();
+      overlay.style.display = 'none';
+      running = false;
     };
   }
 
-  function stop(){ if(stopCb) stopCb(); }
-stopCb = ()=>{
-  cancelAnimationFrame(raf);
-  releaseCamera();        // ← místo ručního stopování tracků
-  overlay.style.display='none';
-  running=false;
-};
+  function stop(){ if (stopFn) stopFn(); }
+
   return { start, stop };
 })();
 
+// zkratky pro menu
 function startExamScan(){ QR.start('START'); }
-function endExamScan(){   QR.start('END'); }
+function endExamScan(){   QR.start('END');   }
 </script>
+
 
 </body>
 </html>
+
 
 
 
