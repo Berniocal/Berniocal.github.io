@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-34">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-35">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -2242,6 +2242,30 @@ window.addEventListener('keydown', (e) => {
       return window.ZXing;
     }
   }
+async function restartLiveScan(noteText) {
+  if (note && noteText) note.textContent = noteText;
+
+  // Ukonči případného čteče a kameru
+  cancelAnimationFrame(raf);
+  if (stopReader) { try { stopReader(); } catch {} }
+  stopReader = null;
+  releaseCamera();
+
+  // Znovu otevřít kameru
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
+  } catch {
+    if (note) note.textContent = 'Kameru nelze otevřít. Zkontrolujte oprávnění.';
+    return;
+  }
+  currentStream = stream;
+  video.srcObject = stream;
+  try { await video.play(); } catch {}
+
+  // Rovnou startni ZXing (na iOS spolehlivější)
+  await startZXing();
+}
 
 
   function deliver(text){
@@ -2269,85 +2293,44 @@ function rotateCanvas(srcCanvas, deg){
 
 async function onPickFile(){
   const f = fileInput.files && fileInput.files[0];
-  if (!f) return;
-  fileInput.value = '';
+  fileInput.value = ''; // reset pro další výběr
 
-  // 1) Načti bitmapu s respektem k EXIF orientaci
-  let bmp = null;
+  if (!f) {
+    // Uživatel zrušil → rovnou obnovíme live scan, ať nemusí nic mačkat
+    restartLiveScan('Namiřte na START QR…');
+    return;
+  }
+
+  let text = null;
   try {
-    bmp = await createImageBitmap(f, { imageOrientation: 'from-image' });
-  } catch {
-    // fallback: přes <img>
-    const url = URL.createObjectURL(f);
-    const img = document.createElement('img');
-    img.src = url;
-    try { await img.decode(); } catch {}
-    bmp = img; // i <img> funguje jako ImageBitmapSource
-    URL.revokeObjectURL(url);
-  }
-  if (!bmp) { failHint(); return; }
+    await ensureFallback();
+    if (window.ZXing && ZXing.BrowserMultiFormatReader) {
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
-  // 2) Připrav canvas (rozumné měřítko kvůli výkonu/úspěšnosti)
-  const MAX = 1280; // stačí; QR je kontrastní
-  const scale = Math.min(1, MAX / Math.max(bmp.width || bmp.videoWidth || 0, bmp.height || bmp.videoHeight || 0) || 1);
-  const canvas = document.createElement('canvas');
-  canvas.width  = Math.max(1, Math.floor((bmp.width  || bmp.videoWidth  || 1) * scale));
-  canvas.height = Math.max(1, Math.floor((bmp.height || bmp.videoHeight || 1) * scale));
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+      const reader = new ZXing.BrowserMultiFormatReader(hints);
 
-  // helper – zkus BarcodeDetector i ZXing nad zadaným canvase/maticí
-  async function detectOnce(cnv){
-    // a) BarcodeDetector (když je)
-    if ('BarcodeDetector' in window) {
-      try {
-        const bd = new BarcodeDetector({ formats: ['qr_code'] });
-        const r = await bd.detect(cnv);
-        if (r && r[0] && (r[0].rawValue || r[0].rawValueText)) {
-          return r[0].rawValue || r[0].rawValueText;
-        }
-      } catch {}
+      const url = URL.createObjectURL(f);
+      const img = document.createElement('img');
+      img.src = url;
+      await img.decode().catch(()=>{});
+      const res = await reader.decodeFromImage(img).catch(()=>null);
+      URL.revokeObjectURL(url);
+
+      if (res) text = res.getText && res.getText();
     }
-    // b) ZXing fallback
-    try {
-      await ensureFallback();
-      if (window.ZXing && ZXing.BrowserMultiFormatReader) {
-        const hints = new Map();
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
-        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-        const reader = new ZXing.BrowserMultiFormatReader(hints);
-        // ZXing umí přímo z elementu canvas:
-        const res = await reader.decodeFromCanvas(cnv).catch(()=>null);
-        if (res) return res.getText && res.getText();
-      }
-    } catch {}
-    return null;
-  }
-
-  // 3) Zkus přímou detekci + rotace 0/90/180/270
-  let text = await detectOnce(canvas);
-  if (!text) {
-    // vytvoř otočené varianty
-    const rots = [90, 180, 270];
-    for (const deg of rots) {
-      const rc = rotateCanvas(canvas, deg);
-      text = await detectOnce(rc);
-      if (text) break;
-    }
-  }
+  } catch(_) {}
 
   if (text) {
-    deliver(text);     // úspěch → zavře overlay a spustí START/END
-  } else {
-    failHint();
+    // Úspěch → deliver sám zavře overlay (volá stop())
+    deliver(text);
+    return;
   }
 
-  function failHint(){
-note.textContent = 'QR se z fotky nepodařilo přečíst. Zkouším dál kamerou…';
-  setTimeout(() => { if (_resume) _resume(); }, 400);
-  }
+  // Neúspěch → nezavírej overlay. Okamžitě znova živý sken.
+  restartLiveScan('QR z fotky se nepodařilo přečíst. Zkuste namířit kameru…');
 }
-
 
 
 async function start(kind){ // 'START' | 'END'
@@ -2360,77 +2343,26 @@ async function start(kind){ // 'START' | 'END'
   // kamera
   let stream = null;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false
+    });
   } catch {
     note.textContent = 'Kameru nelze otevřít. Zkontrolujte oprávnění pro kameru.';
-    running = false; return;
+    running = false;
+    return;
   }
+
   currentStream = stream;
   video.srcObject = stream;
   await video.play().catch(()=>{});
 
-  // plátno pro snapshoty
-  const canvas = document.createElement('canvas');
-    _resume = async function(){
-    if (!overlay || overlay.style.display === 'none') return;
-    if (!running) return;
-    suspended = false;
-    // Po pickeru rovnou naběhnout do ZXing (spolehlivější)
-    await startZXing();
-  };
-  const ctx = canvas.getContext('2d', { willReadFrequently:true });
-  const snap = (scale=1) => {
-    const w = video.videoWidth, h = video.videoHeight;
-    if (!w || !h) return false;
-    canvas.width = Math.max(1, Math.floor(w*scale));
-    canvas.height = Math.max(1, Math.floor(h*scale));
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return true;
-  };
+  // ✅ rovnou startni ZXing (žádný BarcodeDetector, žádné fallback smyčky)
+  await startZXing();
+}
 
-  // pomocná detekce přes BD (nejdřív canvas, pak video)
-  async function detectWithBD(detector){
-    let codes = null;
-    if (snap(0.8)) { try { codes = await detector.detect(canvas); } catch {} }
-    if ((!codes || !codes.length)) { try { codes = await detector.detect(video); } catch {} }
-    const v = codes && codes[0] && (codes[0].rawValue || codes[0].rawValueText || codes[0].rawValueString);
-    return v || null;
-  }
 
-  // výstup
-  function maybeDeliver(raw){
-    const inner = raw && parseExamPayload(raw);
-    if (inner && inner.code) {
-      const now = Math.floor(Date.now()/1000);
-      if (!inner.ts || !inner.expSec || now <= inner.ts + inner.expSec) { deliver(raw); return true; }
-      note.textContent = 'QR je propadlý. Vygenerujte nový.';
-    }
-    return false;
-  }
 
-  // 1) Zkus BarcodeDetector + (při neúspěchu) pád na ZXing
-  const forceZXing = isIOS();
-  const useBD = ('BarcodeDetector' in window) && !forceZXing;
-  if (useBD) {
-    let bd = null;
-    try { bd = new BarcodeDetector({ formats:['qr_code'] }); } catch { bd = null; }
-
-    let emptyFrames = 0;
-    const loop = async () => {
-      if (!running) return;
-      try {
-        const raw = bd ? await detectWithBD(bd) : null;
-        if (raw && maybeDeliver(raw)) return;
-        emptyFrames++;
-        // když BD 30× po sobě nic nenašel → přepni na ZXing
-        if (emptyFrames > 30) return startZXing();
-      } catch {}
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-  } else {
-    await startZXing();
-  }
 
   // 2) ZXing fallback (nebo primární, když BD není)
 async function startZXing(){
@@ -2441,19 +2373,24 @@ async function startZXing(){
     hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
     const reader = new ZXing.BrowserMultiFormatReader(hints);
-    stopReader = () => { try { reader.reset(); } catch {} };   // ⬅️ TADY
+    stopReader = () => { try { reader.reset(); } catch {} };
 
     reader.decodeFromVideoElementContinuously(video, (res /*, err*/) => {
       if (!running) return;
       if (res) {
         const text = res.getText && res.getText();
-        maybeDeliver(text);
+        if (text) {
+          // pokud máš helper maybeDeliver, klidně volej ten:
+          // maybeDeliver(text);
+          deliver(text);
+        }
       }
     });
   } catch {
-    note.textContent = 'Čtečku se nepodařilo inicializovat.';
+    if (note) note.textContent = 'Čtečku se nepodařilo inicializovat.';
   }
 }
+
 
 }
 
@@ -2480,6 +2417,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
