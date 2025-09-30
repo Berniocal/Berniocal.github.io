@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-33">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-34">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -2116,7 +2116,12 @@ document.addEventListener('visibilitychange', () => {
 const QR = (() => {
   let overlay, video, note, btnX, running = false, stopCb = null;
   let pickBtn, fileInput, currentStream = null, raf = 0;
-   let stopReader = null;
+  let stopReader = null;
+
+  // ➕ Nové:
+  const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent || '');
+  let suspended = false;  // když otevřeme picker, pozastavíme sken
+  let _resume = null;     // funkce, kterou naplní start() pro návrat ke skenu
 
   function releaseCamera(){
     try{
@@ -2148,7 +2153,7 @@ const QR = (() => {
     btnX.style.cssText = "position:absolute;right:12px;top:12px;background:#ef4444;color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer";
     btnX.addEventListener('pointerdown', () => stop(), { passive:true });
 
-    // „Nahrát fotku QR“ uprostřed dole
+ // „Nahrát fotku QR“ uprostřed dole
 pickBtn = document.createElement('button');
 pickBtn.textContent = 'Nahrát fotku QR';
 pickBtn.style.cssText =
@@ -2161,22 +2166,37 @@ fileInput = document.createElement('input');
 fileInput.type = 'file';
 fileInput.accept = 'image/*';
 fileInput.multiple = false;
-// klíčové: ne display:none; musí být „viditelný“ (byť průhledný)
+// ➕ důležité pro iOS „Pořídit snímek“ zadní kamerou:
+fileInput.setAttribute('capture', 'environment');
+
+// klíčové: NE display:none; musí být „viditelný“ (byť průhledný)
 fileInput.style.cssText =
   "position:absolute;left:50%;bottom:12px;transform:translateX(-50%);" +
   "opacity:0;width:calc(100vw - 40px);max-width:320px;height:44px;" +
   "cursor:pointer;"; // pokryje tlačítko
 
-// před otevřením pickeru uvolni kameru (iOS je citlivé na běžící stream)
-fileInput.addEventListener('pointerdown', () => { releaseCamera(); }, { passive:true });
+// ➕ před otevřením pickeru POZASTAV skenování úplně (iOS je na to citlivý)
+fileInput.addEventListener('pointerdown', () => {
+  // pozastavený stav – po návratu z pickeru se vrátíme do skenu
+  suspended = true;
+  cancelAnimationFrame(raf);
+  if (stopReader) { try { stopReader(); } catch {} }
+  stopReader = null;
+  releaseCamera();
+}, { passive: true });
+
+// po výběru souboru / pořízení fotky
 fileInput.addEventListener('change', onPickFile);
 
+// a přimontuj do overlaye
+overlay.appendChild(pickBtn);
+overlay.appendChild(fileInput);
 box.appendChild(video);
 box.appendChild(note);
 overlay.appendChild(box);
 overlay.appendChild(btnX);
-overlay.appendChild(pickBtn);
-overlay.appendChild(fileInput);
+
+
 
     document.body.appendChild(overlay);
     overlay.addEventListener('pointerdown', (e) => {
@@ -2323,8 +2343,8 @@ async function onPickFile(){
   }
 
   function failHint(){
-    note.textContent = 'QR se z fotky nepodařilo přečíst. Zkuste znovu – ať je QR ostrý a vyplní většinu snímku.';
-    setTimeout(() => { try { stop(); } catch {} }, 1200);
+note.textContent = 'QR se z fotky nepodařilo přečíst. Zkouším dál kamerou…';
+  setTimeout(() => { if (_resume) _resume(); }, 400);
   }
 }
 
@@ -2351,6 +2371,13 @@ async function start(kind){ // 'START' | 'END'
 
   // plátno pro snapshoty
   const canvas = document.createElement('canvas');
+    _resume = async function(){
+    if (!overlay || overlay.style.display === 'none') return;
+    if (!running) return;
+    suspended = false;
+    // Po pickeru rovnou naběhnout do ZXing (spolehlivější)
+    await startZXing();
+  };
   const ctx = canvas.getContext('2d', { willReadFrequently:true });
   const snap = (scale=1) => {
     const w = video.videoWidth, h = video.videoHeight;
@@ -2382,7 +2409,8 @@ async function start(kind){ // 'START' | 'END'
   }
 
   // 1) Zkus BarcodeDetector + (při neúspěchu) pád na ZXing
-  const useBD = ('BarcodeDetector' in window);
+  const forceZXing = isIOS();
+  const useBD = ('BarcodeDetector' in window) && !forceZXing;
   if (useBD) {
     let bd = null;
     try { bd = new BarcodeDetector({ formats:['qr_code'] }); } catch { bd = null; }
@@ -2432,11 +2460,15 @@ async function startZXing(){
  
 function stop(){
   running = false;
+  suspended = false;
+  _resume = null;
   cancelAnimationFrame(raf);
-  if (stopReader) { try { stopReader(); } catch {} stopReader = null; }
+  if (stopReader) { try { stopReader(); } catch {} }
+  stopReader = null;
   releaseCamera();
   if (overlay) overlay.style.display = 'none';
 }
+
   return { start, stop };
 })();
 
@@ -2448,6 +2480,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
