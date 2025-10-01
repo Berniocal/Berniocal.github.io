@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-37">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-38">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -582,6 +582,9 @@ let tries = 0;
 function applyGradient(c1, c2){
   const rgb1 = hslToRgbArray(c1.h, c1.s, c1.l);
   const rgb2 = hslToRgbArray(c2.h, c2.s, c2.l);
+  document.documentElement.style.setProperty('--exam-c1', rgbToCss(rgb1));
+document.documentElement.style.setProperty('--exam-c2', rgbToCss(rgb2));
+
 
 }
 
@@ -1658,8 +1661,9 @@ async function restartLiveScan(noteText) {
   function deliver(text){
     const inner = parseExamPayload(text) || {};
     stop();
-    if ((inner.type || 'START').toUpperCase() === 'START') ExamGuard.start(inner.code);
-    else ExamGuard.finish();
+   if ((inner.type || 'START').toUpperCase() === 'START') Exam.start(inner.code);
+else Exam.finish();
+
   }
 function rotateCanvas(srcCanvas, deg){
   const rad = (deg % 360) * Math.PI / 180;
