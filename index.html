@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-38">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-39">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -90,6 +90,11 @@
     display:grid; grid-template-rows:auto auto; gap:12px;
     transform-origin: top center;
   }
+  /* === TEST MODE UI === */
+body.exam-on .calc{
+  background: linear-gradient(var(--exam-c1, #ffe8f2), var(--exam-c2, #ffdbe8));
+}
+
 .display{
   background:var(--lcd); color:var(--lcd-text); border-radius:10px;
   padding:12px 14px; box-shadow:inset 0 3px 4px rgba(0,0,0,.25);
@@ -368,6 +373,131 @@ function openTeacher(){
   try{ window.open(TEACHER_URL, '_blank', 'noopener'); }catch(_){}
 }
 </script>
+  <script>
+/* ===================== Exam minimal + notifyEvent + hidden video ===================== */
+// Jednoduché hlášení událostí pro teacher (žádné heartbeat)
+async function notifyEvent(type, extra = {}) {
+  try {
+    await fetch(API('api/event'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: state.examCode || '',
+        pid: Exam.state.pid || null,
+        type,                          // 'hidden' | 'offline' | (volitelně 'online')
+        ...extra
+      })
+    });
+  } catch (_) {}
+}
+
+// iOS/SAFARI: skryté (1×1) video pro udržení displeje/medií „v chodu“
+let __hiddenVideo = null;
+function startHiddenVideoTrick() {
+  if (__hiddenVideo) return;
+  const v = document.createElement('video');
+  v.muted = true;
+  v.loop = true;
+  v.playsInline = true;
+  v.style.cssText = "position:absolute;width:1px;height:1px;opacity:0;pointer-events:none";
+  v.src = "data:video/mp4;base64,AAAA";
+  document.body.appendChild(v);
+  const tryPlay = () => { v.play().catch(()=>{}); document.removeEventListener('pointerdown', tryPlay); };
+  document.addEventListener('pointerdown', tryPlay, { passive: true });
+  __hiddenVideo = v;
+}
+function stopHiddenVideoTrick() {
+  if (!__hiddenVideo) return;
+  try { __hiddenVideo.pause(); } catch {}
+  try { __hiddenVideo.remove(); } catch {}
+  __hiddenVideo = null;
+}
+
+// Minimalistický Exam (bez senzorů, bez zvuků, jen UI + eventy)
+const Exam = (() => {
+  const S = { active:false, pid:null, startAt:0, timerId:0 };
+
+  function setUIOn(code){
+    state.examActive = true;
+    state.examCode   = code;
+    updateExamUI();
+    startExamColorCycleDeterministic(code);
+    const tEl = document.getElementById('bExamTimer');
+    const tick = () => {
+      if (!S.startAt || !tEl) return;
+      const mins = Math.floor((Date.now() - S.startAt)/60000);
+      tEl.textContent = `${mins} min`;
+      tEl.classList.add('on');
+    };
+    if (S.timerId) clearInterval(S.timerId);
+    tick();
+    S.timerId = setInterval(tick, 6000);
+    startHiddenVideoTrick();
+  }
+  function setUIOff(){
+    if (S.timerId) { clearInterval(S.timerId); S.timerId = 0; }
+    const tEl = document.getElementById('bExamTimer');
+    if (tEl) { tEl.textContent=''; tEl.classList.remove('on'); }
+    state.examActive = false;
+    state.examCode   = '';
+    updateExamUI();
+    stopExamColorCycle();
+    stopHiddenVideoTrick();
+  }
+
+  function onVisibility(){ if (S.active && document.hidden) notifyEvent('hidden'); }
+  function onOffline(){ if (S.active && !navigator.onLine) notifyEvent('offline'); }
+  function onOnline(){ /* případně: if (S.active) notifyEvent('online'); */ }
+
+  async function start(code){
+    if (S.active) return;
+    if (!navigator.onLine){ alert('Pro start musíš být online.'); return; }
+    let ident = (window.prompt && window.prompt('Zadej svůj IDENTIFIKÁTOR:')) || '';
+    ident = String(ident||'').trim();
+    if (!ident){ alert('Bez identifikátoru nelze pokračovat.'); return; }
+    try{
+      const resp = await fetch(API('api/join'), {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ code: String(code||'').toUpperCase().slice(0,3), ident })
+      });
+      const text = await resp.text();
+      const data = text ? JSON.parse(text) : null;
+      if (!resp.ok) throw new Error((data && data.error) || `${resp.status} ${resp.statusText}`);
+      if (!data || !data.pid) throw new Error('Bad response from /api/join');
+      S.pid = data.pid;
+    }catch(e){
+      alert('Nelze se připojit k testu.\n' + String(e.message||e));
+      return;
+    }
+    S.active = true;
+    S.startAt = Date.now();
+    const norm = String(code||'').toUpperCase().slice(0,3);
+    setUIOn(norm);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('online', onOnline);
+    state.resultShown = true;
+    state.resultStr = 'Test mód aktivní.';
+    render();
+  }
+  function finish(){
+    if (!S.active) return;
+    document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('offline', onOffline);
+    window.removeEventListener('online', onOnline);
+    S.active = false;
+    S.pid = null;
+    S.startAt = 0;
+    setUIOff();
+    state.resultShown = true;
+    state.resultStr = 'Zkouška ukončena.';
+    render();
+  }
+  return { start, finish, get state(){ return S; } };
+})();
+</script>
+
 
 <script>
 let state={ raw:'', cursor:0, ans:0, drg:'DEG', shift:false, hyp:false, eng:false,
@@ -1662,8 +1792,7 @@ async function restartLiveScan(noteText) {
     const inner = parseExamPayload(text) || {};
     stop();
    if ((inner.type || 'START').toUpperCase() === 'START') Exam.start(inner.code);
-else Exam.finish();
-
+  else Exam.finish();
   }
 function rotateCanvas(srcCanvas, deg){
   const rad = (deg % 360) * Math.PI / 180;
@@ -1804,6 +1933,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
