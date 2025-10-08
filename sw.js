@@ -14,16 +14,6 @@ const PRECACHE_URLS = [
   './icons/icon-512.png',
 ];
 
- self.addEventListener('fetch', (event) => {
-   const req = event.request;
-   if (req.method !== 'GET') return;
-   const url = new URL(req.url);
-
-+  // 🚧 STRÁŽCE: Bernio nikdy neobsluhuje nic pod /zpjevnicek/**
-+  if (url.origin === self.location.origin && url.pathname.startsWith('/zpjevnicek/')) {
-+    return; // nevoláme respondWith → stránku vyřídí síť/SW Zpěvníčku
-+  }
-
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -71,7 +61,10 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-
+// 🚧 STRÁŽCE: Bernio nikdy neobsluhuje nic pod /zpjevnicek/**
+if (url.origin === self.location.origin && url.pathname.startsWith('/zpjevnicek/')) {
+ return; // nevoláme respondWith → stránku vyřídí síť/SW Zpěvníčku
+  }
   // 1) Navigace (HTML): network-first → cache → offline fallback
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
@@ -128,6 +121,7 @@ self.addEventListener('fetch', (event) => {
     return (await c.match(req)) || fetch(req);
   })());
 });
+
 
 
 
