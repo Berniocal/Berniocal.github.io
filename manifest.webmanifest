@@ -1,7 +1,7 @@
 {
   "name": "Bernio",
   "short_name": "Bernio",
-  "start_url": "./",
+  "start_url": "./?app=bernio",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0f1722",
@@ -20,6 +20,8 @@
       "purpose": "any maskable"
     }
   ],
+ "capture_links": "none",
+"launch_handler": { "client_mode": "focus-existing" },
   "screenshots": [
     {
       "src": "/icons/screen-wide.png",
@@ -35,4 +37,5 @@
     }
   ]
 }
+
 
