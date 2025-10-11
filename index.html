@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-46">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-47">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -341,6 +341,7 @@ function renderModeMenu(){
   }
   if (state.modeStage === 1) return setMenu(['Deg','Rad','Gra']);
   if (state.modeStage === 2) return setMenu(['ExS','ExE','Tea']);
+  if (state.modeStage === 3) return setMenu(['D','R','G']);   // <<< DRG> prompt
   resEl.classList.remove('mode');
   return false;
 }
@@ -362,6 +363,16 @@ function handleMenuChoice(digit){
     state.modeStage=0; render();
     return true;
   }
+    if (state.modeStage===3){
+    // 1 => stupně, 2 => radiány, 3 => grady
+    if (digit==='1') insRaw('°');
+    else if (digit==='2') insRaw('r');
+    else if (digit==='3') insRaw('g');
+    state.modeStage=0; 
+    render();
+    return true;
+  }
+
   return false;
 }
 
@@ -1119,7 +1130,19 @@ onPD(qs('#btnDot'),()=>{
 });
 
 onPD(qs('#btnEXP'),()=>{ if(state.shift){ state.shift=false; insRaw('π'); } else insRaw('E'); });
-onPD(qs('#btnAns'),()=>{ if(state.shift){ state.shift=false; state.drg = state.drg==='DEG'?'RAD':state.drg==='RAD'?'GRAD':'DEG'; if(state.resultShown) updateResultView(); render(); } else insRaw('Ans'); });
+onPD(qs('#btnAns'), ()=>{ 
+  if (state.shift){
+    state.shift = false;
+    // otevři mini-menu DRG> (D|R|G nahoře + 1|2|3 dole)
+    state.modeStage = 3;
+    state.resultShown = false;
+    state.resultStr = '';
+    render();
+  } else {
+    insRaw('Ans');
+  }
+});
+
 // === Chytré procento: přizpůsobení podle posledního operátoru ===
 // Vrátí {A, op, B} pro nejvzdálenější binární operátor na nejvyšší úrovni
 
@@ -1631,9 +1654,28 @@ function updateResultView(){
 }
 function evaluate(){
   try{
+        // --- Zachyť jednotku vstupu: DEG (°/DMS), RAD (…r), GRAD (…g)
+    const rawTrim = (state.raw || '').trim();
+    let srcUnit = null;      // 'DEG' | 'RAD' | 'GRAD' | null
+    let evalRaw = rawTrim;   // co skutečně pošleme do parseru
+
+    // pokud je kdekoli °/′/″, bereme to jako stupně (DEG)
+    if (/[°′″]/.test(rawTrim)) {
+      srcUnit = 'DEG';
+    } else if (/\br\s*$/i.test(rawTrim)) {
+      // konec na "r" => radiány; "r" před vyhodnocením odstraň
+      srcUnit = 'RAD';
+      evalRaw = rawTrim.replace(/\br\s*$/i, '').trim();
+    } else if (/\bg\s*$/i.test(rawTrim)) {
+      // konec na "g" => grady; "g" před vyhodnocením odstraň
+      srcUnit = 'GRAD';
+      evalRaw = rawTrim.replace(/\bg\s*$/i, '').trim();
+    }
+
     const hadSep = /[∟]/.test(state.raw);
 const hadDMS = /[°′″]/.test(state.raw);
-const norm = normalizeInput(state.raw);
+const norm = normalizeInput(evalRaw);
+
 
     const toks = tokenize(norm);
     const rpn  = toRPN(toks);
@@ -1645,6 +1687,26 @@ const norm = normalizeInput(state.raw);
       state.ans=+res.v; state.lastRes={type:'num',v:+res.v}; state.dmsDisplay=true; state.repeat=null;
     }else{
       state.ans=+res; state.lastRes={type:'num',v:+res}; captureRepeat(toks);
+    }
+    // --- Jednotkový převod na cílový režim (state.drg), pokud se rozpoznala zdrojová jednotka
+    if (srcUnit && state.lastRes && state.lastRes.type === 'num') {
+      let v = +state.lastRes.v;
+      const to = state.drg;     // 'DEG' | 'RAD' | 'GRAD'
+      if (srcUnit === 'DEG') {
+        if (to === 'RAD') v = v * Math.PI / 180;
+        else if (to === 'GRAD') v = v * 10 / 9; // 360° = 400g
+        // to === 'DEG' => beze změny
+      } else if (srcUnit === 'RAD') {
+        if (to === 'DEG') v = v * 180 / Math.PI;
+        else if (to === 'GRAD') v = v * 200 / Math.PI;
+      } else if (srcUnit === 'GRAD') {
+        if (to === 'DEG') v = v * 0.9;         // 400g = 360°
+        else if (to === 'RAD') v = v * Math.PI / 200;
+      }
+      state.ans = +v;
+      state.lastRes = { type:'num', v:+v };
+      // pokud chceš při cílovém DEG rovnou DMS formát, odkomentuj:
+      // if (to === 'DEG') state.dmsDisplay = true;
     }
 
     if(hadSep){ state.frac=true; state.fracMixed=true; }
@@ -2123,6 +2185,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
