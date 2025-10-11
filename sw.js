@@ -1,6 +1,6 @@
 // sw.js — Bernio PWA Service Worker
 // verzi zvyšuj při každém nasazení (stejně jako SW_VERSION v index.html)
-const VERSION = '2025-09-66b';
+const VERSION = '2025-09-67b';
 const APP_CACHE = `bernio-app-${VERSION}`;
 const RUNTIME_CACHE = `bernio-runtime-${VERSION}`;
 
@@ -121,6 +121,7 @@ if (url.origin === self.location.origin && url.pathname.startsWith('/zpjevnicek/
     return (await c.match(req)) || fetch(req);
   })());
 });
+
 
 
 
