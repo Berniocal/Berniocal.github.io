@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-42">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-43">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -505,7 +505,8 @@ let state={
   dmsDisplay:false, frac:false, fracMixed:true, memory:0, memOn:false,
   lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
   modeStage:0, repeat:null, examActive:false, examCode:'',
-  percentSuffix:''          // <<< přidáno
+  percentSuffix:'',
+  lastPercentCtx:null       // { Araw,Braw, op, A, B } uložené po A×B%          // <<< přidáno
 };
 
 
@@ -782,7 +783,7 @@ function stopExamColorCycle(){
 }
 
 function clearForNewEntry(){
-  state.percentSuffix = '';              // <<< přidáno
+ state.percentSuffix = ''; state.lastPercentCtx = null;            // <<< přidáno
   if(state.resultShown && !state.editAfterResult){
     state.resultShown=false; state.resultStr=''; state.raw=''; state.cursor=0;
   }
@@ -888,7 +889,7 @@ function ac(hard=false){
   state.raw=''; state.cursor=0; if(hard){ state.ans=0; }
   state.resultShown=false; state.resultStr=''; state.lastRes=null;
   state.editAfterResult=false; document.getElementById('exprWrap').scrollLeft=0;
-  state.percentSuffix='';                 // <<< přidáno
+  state.percentSuffix=''; state.lastPercentCtx=null;               // <<< přidáno
   render();
 }
 
@@ -1112,12 +1113,22 @@ onPD(qs('#btnEXP'),()=>{ if(state.shift){ state.shift=false; insRaw('π'); } els
 onPD(qs('#btnAns'),()=>{ if(state.shift){ state.shift=false; state.drg = state.drg==='DEG'?'RAD':state.drg==='RAD'?'GRAD':'DEG'; if(state.resultShown) updateResultView(); render(); } else insRaw('Ans'); });
 // === Chytré procento: přizpůsobení podle posledního operátoru ===
 // Vrátí {A, op, B} pro nejvzdálenější binární operátor na nejvyšší úrovni
+
+
+// textové vložení postfixového % za B (náš parser chápe jako B/100)
+function asPercentOfB(A, op, B){
+  return `${A} ${op} ${B}%`;
+}
+
+// pro +/−: převeď na A ± (A × B%)
+function addSubWithPercent(A, op, B){
+  return `${A} ${op} ( ${A} × ${B}% )`;
+}
+// --- Okamžité procento – pomocné funkce ---
 function splitLastSimpleAB(raw){
-  // ignorujeme závorky (počítáme hloubku)
   let depth = 0, i = raw.length - 1;
   const ops = ['+','−','×','÷'];
-  // najdi poslední op na depth==0
-  while(i >= 0){
+  while (i >= 0){
     const c = raw[i];
     if (c === ')') depth++;
     else if (c === '(') depth--;
@@ -1129,42 +1140,50 @@ function splitLastSimpleAB(raw){
   const op = raw[i];
   const B = raw.slice(i+1).trim();
   if (!A || !B) return null;
-  return { A, op, B };
+  return { A, op, B, pos:i };
 }
 
-// textové vložení postfixového % za B (náš parser chápe jako B/100)
-function asPercentOfB(A, op, B){
-  return `${A} ${op} ${B}%`;
+// rychlé vyhodnocení libovolného kousku výrazu (vrací číslo nebo NaN)
+function quickEvalToNumber(expr){
+  try{
+    const norm = normalizeInput(expr);
+    const toks  = tokenize(norm);
+    const rpn   = toRPN(toks);
+    const r     = evalRPN(rpn);
+    return (typeof r === 'number') ? +r : (r && r.t==='pair' ? NaN : +r);
+  }catch(_){ return NaN; }
 }
 
-// pro +/−: převeď na A ± (A × B%)
-function addSubWithPercent(A, op, B){
-  return `${A} ${op} ( ${A} × ${B}% )`;
+// po vložení '%' zkus hned vypočítat A×/÷B% a uložit kontext
+function handlePercentImmediate(){
+  const ab = splitLastSimpleAB(state.raw);
+  if (!ab) return;
+  const {A, op, B} = ab;
+  if (!(op==='×' || op==='÷')) return;
+  if (!/%$/.test(B)) return;               // musí končit na %
+  const Araw = A;
+  const Braw = B.replace(/\s+$/,'').replace(/%$/,''); // bez %
+  const Aval = quickEvalToNumber(Araw);
+  const Bval = quickEvalToNumber(Braw);
+  const val  = quickEvalToNumber(state.raw); // celé A op B%
+
+  if (!isFinite(val)) return;
+  state.ans = val;
+  state.lastRes = { type:'num', v: val };
+  state.resultShown = true;
+  state.percentSuffix = '';                 // nikdy nepřidáváme „%“ za výsledek
+  state.lastPercentCtx = { Araw, Braw, op, A:Aval, B:Bval };  // pro +/− pokračování
+  render();
 }
 
-  onPD(qs('#btnEq'), ()=>{ 
+onPD(qs('#btnEq'), ()=>{ 
   if(state.shift){
     state.shift = false;
-    // chytré % podle posledního operátoru
-    const ab = splitLastSimpleAB(state.raw);
-    if (ab){
-      const {A, op, B} = ab;
-      if (op === '×'){
-        state.raw = asPercentOfB(A, '×', B);           // A × (B%)
-      } else if (op === '÷'){
-        state.raw = asPercentOfB(A, '÷', B);           // A ÷ (B%)  => (A/B)*100
-        state.percentSuffix = '%';                     // výsledek ukaž s %
-      } else if (op === '+'){
-        state.raw = addSubWithPercent(A, '+', B);      // A + A×B%
-      } else if (op === '−'){
-        state.raw = addSubWithPercent(A, '−', B);      // A − A×B%
-      } else {
-        // fallback: prosté postfixové %
-        insRaw('%');
-      }
-      render();
-      return;
-    }
+    insRaw('%');              // vlož „%“
+    handlePercentImmediate(); // a HNED přepočti (A×/÷B%)
+    return;
+  }
+
     // fallback když se nepodařilo rozumně rozparsovat
     insRaw('%'); 
     return;
@@ -1188,8 +1207,27 @@ function addSubWithPercent(A, op, B){
 onPDAll('[data-act]', el=>{ const a=el.dataset.act; if(a==='del') back(); else if(a==='ac') ac(); });
 
 function opAfterResult(sym){
+  // Speciální chování: po A × B% – okamžitý výsledek pro + / −
+  if ((sym==='+' || sym==='−') && state.resultShown && !state.editAfterResult &&
+      state.lastPercentCtx && state.lastPercentCtx.op === '×'){
+    const ctx = state.lastPercentCtx;
+    const delta = ctx.A * (ctx.B / 100);
+    const v = (sym === '+') ? (ctx.A + delta) : (ctx.A - delta);
+
+    // zobraz: řádek „A × B% +/−“, výsledek hned
+    state.raw = `${ctx.Araw} × ${ctx.Braw}% ${sym}`;
+    state.cursor = state.raw.length;
+
+    state.ans = v;
+    state.lastRes = { type:'num', v };
+    state.resultShown = true;
+    state.percentSuffix = '';
+    render();
+    return;
+  }
+
+  // běžné chování
   if(state.resultShown && !state.editAfterResult){
-    // Necháme výsledek viditelný, jen začneme nový výraz "Ans <op>"
     state.editAfterResult = true;
     state.raw = 'Ans' + sym;
     state.cursor = state.raw.length;
@@ -1198,7 +1236,6 @@ function opAfterResult(sym){
     insRaw(sym);
   }
 }
-
 
 onPDAll('[data-ins]', el=>{
   const t=el.dataset.ins;
@@ -1644,7 +1681,9 @@ addEventListener('keydown',e=>{
     return;
   }
 
-  if(k==='('||k===')'||k===','||k==='.'||k==='%'){insRaw(k);return;}
+ if(k==='('||k===')'||k===','||k==='.'){insRaw(k);return;}
+if(k==='%'){ insRaw('%'); handlePercentImmediate(); return; }
+
   if(k==='^'){opAfterResult('^');return;}
   if(k==='+'){opAfterResult('+');return;}
   if(k==='-'){opAfterResult('−');return;}
@@ -2083,6 +2122,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
