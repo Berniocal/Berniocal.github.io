@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-43">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-44">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -980,17 +980,20 @@ onPD(qs('#btnPow3'),()=>{
 });
 
 onPD(qs('#btnFracKey'), ()=>{
-  // === Po "=": přepínání formátu výsledku (zůstává stejné chování) ===
   if (state.resultShown){
     if (state.shift){
       state.shift = false;
-      state.frac = true;         // zapnout zlomkový výstup
-      state.fracMixed = false;   // …a nepravý (d/c)
+      if (!state.frac){
+        // nebyl zlomek → zapni zlomek a začni nepravým (d/c)
+        state.frac = true;
+        state.fracMixed = false;
+      } else {
+        // už je zlomek → přepínej smíšený ↔ nepravý
+        state.fracMixed = !state.fracMixed;
+      }
     } else {
-      // cyklus: vyp → smíšený → vyp → smíšený …
-      if (!state.frac){ state.frac = true; state.fracMixed = true; }
-      else if (state.frac && state.fracMixed){ state.frac = false; }
-      else { state.frac = true; state.fracMixed = true; }
+      // bez SHIFT → ukaž desetinné číslo
+      state.frac = false;
     }
     updateResultView(); render();
     return;
@@ -1177,26 +1180,15 @@ function handlePercentImmediate(){
 }
 
 onPD(qs('#btnEq'), ()=>{ 
-  if(state.shift){
+  if (state.shift){
     state.shift = false;
     insRaw('%');              // vlož „%“
-    handlePercentImmediate(); // a HNED přepočti (A×/÷B%)
+    handlePercentImmediate(); // a hned přepočti (A×/÷B%)
     return;
   }
 
-    // fallback když se nepodařilo rozumně rozparsovat
-    insRaw('%'); 
-    return;
-  }
-  if(state.resultShown && !state.editAfterResult && state.repeat){
-    const sym = prettyOp(state.repeat.op);
-    state.raw = 'Ans' + sym + String(state.repeat.rhs);
-    state.cursor = state.raw.length;
-  }
-  evaluate();
-});
-
-  if(state.resultShown && !state.editAfterResult && state.repeat){
+  // běžné "="
+  if (state.resultShown && !state.editAfterResult && state.repeat){
     const sym = prettyOp(state.repeat.op);
     state.raw = 'Ans' + sym + String(state.repeat.rhs);
     state.cursor = state.raw.length;
@@ -2122,6 +2114,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
