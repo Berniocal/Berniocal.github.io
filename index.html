@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-40">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-41">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -808,6 +808,60 @@ function smartDeleteRootComma(){
   }
   return false;
 }
+// === FRACTION TOGGLE (d/c) v řádku zadávání ===
+// najdi nejbližší zlomek (separátor "∟") obsahující kurzor:
+//   A ∟ B ∟ C  … smíšený (A + B/C)
+//   N ∟ D      … nepravý/pravoúhlý
+function findFractionSpanAroundCursor(src, cursor){
+  const re = /-?\d+(?:\.\d+)?\s*∟\s*\d+(?:\s*∟\s*\d+)?/g;
+  let m, hit=null;
+  while ((m = re.exec(src))){
+    const s = m.index, e = s + m[0].length;
+    if (s <= cursor && cursor <= e){ hit = { start:s, end:e, text:m[0] }; }
+  }
+  return hit;
+}
+
+// přehoď smíšený ↔ nepravý textově (bez závorek a operátorů)
+function toggleFractionText(txt){
+  // normalizace mezer kolem ∟
+  const parts = txt.replace(/\s*∟\s*/g,' ∟ ').trim().split(/\s*∟\s*/);
+
+  if (parts.length === 3){
+    // A ∟ B ∟ C  -> (A*C + B) ∟ C
+    const A = +parts[0], B = +parts[1], C = +parts[2];
+    if (!isFinite(A)||!isFinite(B)||!isFinite(C)||C===0) return txt;
+    const sign = A < 0 ? -1 : 1;     // smíšené číslo nese znamenko v A
+    const N = sign*(Math.abs(A)*C + B);
+    return `${N} ∟ ${C}`;
+  }
+  if (parts.length === 2){
+    // N ∟ D  ->  W ∟ R ∟ D   (jen když |N| >= D a R>0)
+    const N = +parts[0], D = +parts[1];
+    if (!isFinite(N)||!isFinite(D)||D===0) return txt;
+    const sign = N < 0 ? -1 : 1;
+    const n = Math.abs(N);
+    if (n < D) return txt;           // už je vlastník → neměň
+    const W = Math.floor(n / D);
+    const R = n % D;
+    if (R === 0) return String(sign*W);  // přesně celé číslo
+    const w = sign < 0 ? -W : W;         // znaménko přenes na celé
+    return `${w} ∟ ${R} ∟ ${D}`;
+  }
+  return txt;
+}
+
+// proveď přepnutí u zlomku, který obsahuje kurzor; vrať true pokud proběhlo
+function toggleFractionAtCursor(){
+  const hit = findFractionSpanAroundCursor(state.raw, state.cursor);
+  if (!hit) return false;
+  const newTxt = toggleFractionText(hit.text);
+  if (newTxt === hit.text) return false;
+  state.raw = state.raw.slice(0, hit.start) + newTxt + state.raw.slice(hit.end);
+  // posuň kurzor na konec upraveného zlomku
+  state.cursor = hit.start + newTxt.length;
+  return true;
+}
 
 function back(){
   if(smartDeleteRootComma()){ render(); return; }
@@ -910,23 +964,36 @@ onPD(qs('#btnPow3'),()=>{
 });
 
 onPD(qs('#btnFracKey'), ()=>{
-  if(state.resultShown){
-    if(state.shift){
-      state.shift=false;
-      state.frac = true;
-      state.fracMixed = false;
-    }else{
-      if(!state.frac){ state.frac=true; state.fracMixed=true; }
-      else if(state.frac && state.fracMixed){ state.frac=false; }
-      else { state.frac=true; state.fracMixed=true; }
+  // === Po "=": přepínání formátu výsledku (zůstává stejné chování) ===
+  if (state.resultShown){
+    if (state.shift){
+      state.shift = false;
+      state.frac = true;         // zapnout zlomkový výstup
+      state.fracMixed = false;   // …a nepravý (d/c)
+    } else {
+      // cyklus: vyp → smíšený → vyp → smíšený …
+      if (!state.frac){ state.frac = true; state.fracMixed = true; }
+      else if (state.frac && state.fracMixed){ state.frac = false; }
+      else { state.frac = true; state.fracMixed = true; }
     }
     updateResultView(); render();
     return;
   }
+
+  // === V řádku zadávání: SHIFT + (a b/c) = d/c toggle pod kurzorem ===
+  if (state.shift){
+    state.shift = false;
+    if (toggleFractionAtCursor()){ render(); return; }
+    // když u kurzoru žádný zlomek není, nic nedělej
+    render();
+    return;
+  }
+
+  // běžné vložení separátoru "∟"
   clearForNewEntry();
-  state.shift=false;
   insRaw('∟');
 });
+
 
 onPD(qs('#btnSqrt'),()=>{ clearForNewEntry(); insRaw('sqrt('); });
 onPD(qs('#btnPow2'),()=>{
@@ -1933,6 +2000,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
