@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-44">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-45">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -502,7 +502,7 @@ const Exam = (() => {
 <script>
 let state={
   raw:'', cursor:0, ans:0, drg:'DEG', shift:false, hyp:false, eng:false,
-  dmsDisplay:false, frac:false, fracMixed:true, memory:0, memOn:false,
+  dmsDisplay:false, frac:false, fracMixed:true, fracPrefMixed:true, memory:0, memOn:false,
   lastRes:null, resultShown:false, resultStr:'', editAfterResult:false,
   modeStage:0, repeat:null, examActive:false, examCode:'',
   percentSuffix:'',
@@ -982,22 +982,28 @@ onPD(qs('#btnPow3'),()=>{
 onPD(qs('#btnFracKey'), ()=>{
   if (state.resultShown){
     if (state.shift){
+      // SHIFT: přepínej SMÍŠENÝ ↔ NEPRAVÝ a ulož preferenci
       state.shift = false;
-      if (!state.frac){
-        // nebyl zlomek → zapni zlomek a začni nepravým (d/c)
+      if (!state.frac) {
         state.frac = true;
-        state.fracMixed = false;
+        state.fracMixed = state.fracPrefMixed ?? true;
       } else {
-        // už je zlomek → přepínej smíšený ↔ nepravý
         state.fracMixed = !state.fracMixed;
       }
+      state.fracPrefMixed = state.fracMixed; // zapamatuj volbu
     } else {
-      // bez SHIFT → ukaž desetinné číslo
-      state.frac = false;
+      // bez SHIFT: TOGGLE mezi desetinným a (naposledy zvoleným) zlomkem
+      if (state.frac) {
+        state.frac = false;                 // na desetinné
+      } else {
+        state.frac = true;                  // na zlomek
+        state.fracMixed = state.fracPrefMixed ?? true;
+      }
     }
     updateResultView(); render();
     return;
   }
+
 
   // === V řádku zadávání: SHIFT + (a b/c) = d/c toggle pod kurzorem ===
   if (state.shift){
@@ -1183,7 +1189,7 @@ onPD(qs('#btnEq'), ()=>{
   if (state.shift){
     state.shift = false;
     insRaw('%');              // vlož „%“
-    handlePercentImmediate(); // a hned přepočti (A×/÷B%)
+    handlePercentImmediate(); // a hned přepočti A×/÷B%
     return;
   }
 
@@ -1195,6 +1201,7 @@ onPD(qs('#btnEq'), ()=>{
   }
   evaluate();
 });
+
 
 onPDAll('[data-act]', el=>{ const a=el.dataset.act; if(a==='del') back(); else if(a==='ac') ac(); });
 
@@ -2114,6 +2121,7 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
+
 
 
 
