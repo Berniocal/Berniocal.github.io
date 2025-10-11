@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="./manifest.webmanifest?v=2025-09-47">
+<link rel="manifest" href="./manifest.webmanifest?v=2025-09-48">
 <meta name="apple-mobile-web-app-title" content="Bernio">
 <title>Bernio</title>
 <style>
@@ -1662,20 +1662,18 @@ function evaluate(){
     // pokud je kdekoli °/′/″, bereme to jako stupně (DEG)
     if (/[°′″]/.test(rawTrim)) {
       srcUnit = 'DEG';
-    } else if (/\br\s*$/i.test(rawTrim)) {
-      // konec na "r" => radiány; "r" před vyhodnocením odstraň
-      srcUnit = 'RAD';
-      evalRaw = rawTrim.replace(/\br\s*$/i, '').trim();
-    } else if (/\bg\s*$/i.test(rawTrim)) {
-      // konec na "g" => grady; "g" před vyhodnocením odstraň
-      srcUnit = 'GRAD';
-      evalRaw = rawTrim.replace(/\bg\s*$/i, '').trim();
-    }
+   } else if (/r\s*$/i.test(rawTrim)) {
+  srcUnit = 'RAD';
+  evalRaw = rawTrim.replace(/r\s*$/i, '').trim();
+} else if (/g\s*$/i.test(rawTrim)) {
+  srcUnit = 'GRAD';
+  evalRaw = rawTrim.replace(/g\s*$/i, '').trim();
+}
+
 
     const hadSep = /[∟]/.test(state.raw);
 const hadDMS = /[°′″]/.test(state.raw);
 const norm = normalizeInput(evalRaw);
-
 
     const toks = tokenize(norm);
     const rpn  = toRPN(toks);
@@ -1705,6 +1703,10 @@ const norm = normalizeInput(evalRaw);
       }
       state.ans = +v;
       state.lastRes = { type:'num', v:+v };
+      // pokud cíl není DEG, nechceme DMS formát (chceme desetinné rad/grad)
+if (srcUnit && state.drg !== 'DEG') {
+  state.dmsDisplay = false;
+}
       // pokud chceš při cílovém DEG rovnou DMS formát, odkomentuj:
       // if (to === 'DEG') state.dmsDisplay = true;
     }
@@ -1713,7 +1715,8 @@ const norm = normalizeInput(evalRaw);
 else { state.frac=false; }
 
 // Pokud uživatel psal DMS, ukaž výsledek rovnou ve stupních-minutách-vteřinách
-if(hadDMS){ state.dmsDisplay = true; }
+if (hadDMS && state.drg === 'DEG') { state.dmsDisplay = true; }
+
 
 state.editAfterResult=false;
 updateResultView();
@@ -2185,44 +2188,5 @@ function endExamScan(){   QR.start('END'); }
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
