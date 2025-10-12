@@ -1,6 +1,6 @@
 // sw.js — Bernio PWA Service Worker
 // verzi zvyšuj při každém nasazení (stejně jako SW_VERSION v index.html)
-const VERSION = '2025-09-74b';
+const VERSION = '2025-09-75b';
 const APP_CACHE = `bernio-app-${VERSION}`;
 const RUNTIME_CACHE = `bernio-runtime-${VERSION}`;
 
