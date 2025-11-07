@@ -1,25 +1,159 @@
 <!doctype html>
 <html lang="cs">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Přesunuto na /Bernio/</title>
-
-  <!-- Okamžitý redirect i bez JS/SW -->
-  <meta http-equiv="refresh" content="0; url=/Bernio/">
-  <script>location.replace('/Bernio/');</script>
-  <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;padding:2rem;background:#0f1722;color:#e8f0fe}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Bernio – rozcestník aplikací</title>
+<meta name="theme-color" content="#0b1323" />
+<style>
+  :root{
+    --bg:#0b1323; --bg2:#0f1722; --panel:#101826; --text:#e6eef8; --muted:#9fb0c7; --accent:#60a5fa;
+    --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444;
+    --r:16px; --gap:14px;
+    /* Pokud máš jinou základní doménu/cestu, změň tohle: */
+    --base-url: "https://berniocal.github.io";
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));
+            color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:min(1100px,96vw);margin:28px auto;padding:12px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+  h1{margin:0;font-weight:700;letter-spacing:.3px}
+  .muted{color:var(--muted)}
+  .grid{
+    display:grid; gap:var(--gap);
+    grid-template-columns: repeat(auto-fit, minmax(230px,1fr));
+  }
+  .card{
+    background:linear-gradient(180deg,rgba(16,24,38,.8),rgba(10,16,28,.8));
+    border:1px solid #1c263a; border-radius:var(--r); padding:16px;
+    box-shadow:0 6px 28px rgba(0,0,0,.25);
+    display:flex; flex-direction:column; gap:10px; min-height:150px;
+    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .card:hover{ transform:translateY(-2px); box-shadow:0 10px 36px rgba(0,0,0,.35); border-color:#273349 }
+  .title{display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px}
+  .pill{font-size:12px; padding:4px 8px; border-radius:999px; background:#1b2438; color:var(--muted)}
+  .desc{color:var(--muted); min-height:44px}
+  a.btn{
+    margin-top:auto; display:inline-flex; align-items:center; gap:8px;
+    padding:10px 12px; border-radius:12px; text-decoration:none;
+    background:linear-gradient(180deg,#1a2740,#132033); color:var(--text);
+    border:1px solid #23314c; font-weight:600;
+  }
+  a.btn:hover{ background:linear-gradient(180deg,#1e2f51,#162640); border-color:#2c3b5c }
+  .icon{width:26px; height:26px; display:inline-grid; place-items:center; border-radius:8px;
+        background:#18243c; border:1px solid #283553; font-size:16px}
+  footer{margin-top:26px; text-align:center; color:var(--muted); font-size:14px}
+</style>
 </head>
 <body>
-  <p>Stránka byla přesunuta na <a href="/Bernio/">/Bernio/</a>.</p>
+  <div class="wrap">
+    <header>
+      <h1>Bernio – rozcestník</h1>
+      <div class="muted">Rychlé odkazy na projekty</div>
+    </header>
 
-  <script>
-    // Registrace MIGRAČNÍHO service workeru v rootu (scope='/')
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(()=>{});
-    }
-  </script>
+    <section class="grid">
+
+      <!-- Zpjěvníček -->
+      <article class="card">
+        <div class="title">
+          <span class="icon">🎸</span>
+          <span>Zpjěvníček</span>
+          <span class="pill">/zpjevnicek</span>
+        </div>
+        <div class="desc">Offline zpěvníček s akordy (ChordPro/UG), rychlé vyhledávání a čisté zobrazení.</div>
+        <a class="btn" href="https://berniocal.github.io/zpjevnicek/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
+      </article>
+
+      <!-- Bernio (kalkulačka) -->
+      <article class="card">
+        <div class="title">
+          <span class="icon">🧮</span>
+          <span>Bernio</span>
+          <span class="pill">/Bernio</span>
+        </div>
+        <div class="desc">Vědecká kalkulačka ve stylu Casio s promyšleným ovládáním a režimy.</div>
+        <a class="btn" href="https://berniocal.github.io/Bernio/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
+      </article>
+
+      <!-- Ámos (kostky/slovní hra) -->
+      <article class="card">
+        <div class="title">
+          <span class="icon">🎲</span>
+          <span>Ámos</span>
+          <span class="pill">/amos</span>
+        </div>
+        <div class="desc">Hra s písmenkovými kostkami: spojuj, skládej slova, trénuj rychlost a slovní zásobu.</div>
+        <a class="btn" href="https://berniocal.github.io/amos/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
+      </article>
+
+      <!-- b-recorder -->
+      <article class="card">
+        <div class="title">
+          <span class="icon">🎙️</span>
+          <span>B-Recorder</span>
+          <span class="pill">/b-recorder</span>
+        </div>
+        <div class="desc">Jednoduché nahrávání zvuku v prohlížeči, export souborů a organizace záznamů.</div>
+        <a class="btn" href="https://berniocal.github.io/b-recorder/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
+      </article>
+
+      <!-- B-Frame -->
+      <article class="card">
+        <div class="title">
+          <span class="icon">🎞️</span>
+          <span>B-Frame</span>
+          <span class="pill">/b-frame</span>
+        </div>
+        <div class="desc">Prohlížení videa po jednotlivých snímcích, označování a export klíčových frameů.</div>
+        <a class="btn" href="https://berniocal.github.io/b-frame/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
+      </article>
+
+      <!-- Zlomky -->
+      <article class="card">
+        <div class="title">
+          <span class="icon">➗</span>
+          <span>Zlomky</span>
+          <span class="pill">/zlomky</span>
+        </div>
+        <div class="desc">Procvičování zlomků s okamžitou zpětnou vazbou – ideální pro 1. ročník SŠ.</div>
+        <a class="btn" href="https://berniocal.github.io/zlomky/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
+      </article>
+
+      <!-- Berniátor (generátor) -->
+      <article class="card">
+        <div class="title">
+          <span class="icon">⚙️</span>
+          <span>Berniátor</span>
+          <span class="pill">/berniator</span>
+        </div>
+        <div class="desc">Generátor vln, zvuku a dalších nástrojů pro fyziku – vše přímo v prohlížeči.</div>
+        <a class="btn" href="https://berniocal.github.io/berniator/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
+      </article>
+
+      <!-- Zasedák -->
+      <article class="card">
+        <div class="title">
+          <span class="icon">🪑</span>
+          <span>Zasedák</span>
+          <span class="pill">/zasedak</span>
+        </div>
+        <div class="desc">Tvorba zasedacích pořádků se zámky, tiskem a exportem do PNG/PDF.</div>
+        <a class="btn" href="https://berniocal.github.io/zasedak/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
+      </article>
+
+    </section>
+
+    <footer>
+      © <span id="y"></span> Bernio • Pokud ti nějaký odkaz nefunguje, zkontroluj název repozitáře nebo <span class="muted">uprávní základní URL v souboru</span>.
+    </footer>
+  </div>
+
+<script>
+  // Rok v patičce
+  document.getElementById('y').textContent = new Date().getFullYear();
+</script>
 </body>
 </html>
