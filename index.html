@@ -8,14 +8,15 @@
 <style>
   :root{
     --bg:#0b1323; --bg2:#0f1722; --panel:#101826; --text:#e6eef8; --muted:#9fb0c7; --accent:#60a5fa;
-    --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444;
     --r:16px; --gap:14px;
-    /* Pokud máš jinou základní doménu/cestu, změň tohle: */
-    --base-url: "https://berniocal.github.io";
   }
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));
-            color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  html,body{
+    height:100%;margin:0;
+    background:linear-gradient(180deg,var(--bg),var(--bg2));
+    color:var(--text);
+    font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif
+  }
   .wrap{max-width:min(1100px,96vw);margin:28px auto;padding:12px}
   header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
   h1{margin:0;font-weight:700;letter-spacing:.3px}
@@ -56,11 +57,11 @@
 
     <section class="grid">
 
-      <!-- Zpjěvníček -->
+      <!-- Zpěvníček -->
       <article class="card">
         <div class="title">
           <span class="icon">🎸</span>
-          <span>Zpjěvníček</span>
+          <span>Zpěvníček</span>
           <span class="pill">/zpjevnicek</span>
         </div>
         <div class="desc">Offline zpěvníček s akordy (ChordPro/UG), rychlé vyhledávání a čisté zobrazení.</div>
@@ -78,7 +79,7 @@
         <a class="btn" href="https://berniocal.github.io/Bernio/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
       </article>
 
-      <!-- Ámos (kostky/slovní hra) -->
+      <!-- Ámos -->
       <article class="card">
         <div class="title">
           <span class="icon">🎲</span>
@@ -98,6 +99,17 @@
         </div>
         <div class="desc">Jednoduché nahrávání zvuku v prohlížeči, export souborů a organizace záznamů.</div>
         <a class="btn" href="https://berniocal.github.io/b-recorder/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
+      </article>
+
+      <!-- Zápisník -->
+      <article class="card">
+        <div class="title">
+          <span class="icon">📝</span>
+          <span>Zápisník</span>
+          <span class="pill">/zapisnik</span>
+        </div>
+        <div class="desc">Rychlé poznámky, checklisty a drobné plánování – vždy po ruce.</div>
+        <a class="btn" href="https://berniocal.github.io/zapisnik/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
       </article>
 
       <!-- B-Frame -->
@@ -122,7 +134,7 @@
         <a class="btn" href="https://berniocal.github.io/zlomky/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
       </article>
 
-      <!-- Berniátor (generátor) -->
+      <!-- Berniátor -->
       <article class="card">
         <div class="title">
           <span class="icon">⚙️</span>
@@ -144,15 +156,25 @@
         <a class="btn" href="https://berniocal.github.io/zasedak/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
       </article>
 
+      <!-- Zrcadlení obrazovky -->
+      <article class="card">
+        <div class="title">
+          <span class="icon">🖥️</span>
+          <span>Zrcadlení obrazovky</span>
+          <span class="pill">/zrcadleni</span>
+        </div>
+        <div class="desc">Nástroj pro sdílení obrazovky telefonu nebo počítače pomocí AirDroid Cast.</div>
+        <a class="btn" href="https://berniocal.github.io/zrcadleni/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
+      </article>
+
     </section>
 
     <footer>
-      © <span id="y"></span> Bernio • Pokud ti nějaký odkaz nefunguje, zkontroluj název repozitáře nebo <span class="muted">uprávní základní URL v souboru</span>.
+      © <span id="y"></span> Bernio • Pokud ti nějaký odkaz nefunguje, zkontroluj název repozitáře.
     </footer>
   </div>
 
 <script>
-  // Rok v patičce
   document.getElementById('y').textContent = new Date().getFullYear();
 </script>
 </body>
