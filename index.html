@@ -15,12 +15,16 @@
     height:100%;margin:0;
     background:linear-gradient(180deg,var(--bg),var(--bg2));
     color:var(--text);
-    font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif
+    font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
   }
   .wrap{max-width:min(1100px,96vw);margin:28px auto;padding:12px}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
   h1{margin:0;font-weight:700;letter-spacing:.3px}
-  .muted{color:var(--muted)}
+  .muted{color:var(--muted);font-size:14px}
+  .breadcrumb{color:var(--muted);font-size:14px;margin-top:4px}
+  .breadcrumb span{opacity:.9}
+  .breadcrumb strong{color:var(--text);font-weight:600}
+
   .grid{
     display:grid; gap:var(--gap);
     grid-template-columns: repeat(auto-fit, minmax(230px,1fr));
@@ -31,142 +35,260 @@
     box-shadow:0 6px 28px rgba(0,0,0,.25);
     display:flex; flex-direction:column; gap:10px; min-height:150px;
     transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    cursor:default;
   }
-  .card:hover{ transform:translateY(-2px); box-shadow:0 10px 36px rgba(0,0,0,.35); border-color:#273349 }
+  .card:hover{
+    transform:translateY(-2px);
+    box-shadow:0 10px 36px rgba(0,0,0,.35);
+    border-color:#273349;
+  }
+  .card.clickable{cursor:pointer}
   .title{display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px}
   .pill{font-size:12px; padding:4px 8px; border-radius:999px; background:#1b2438; color:var(--muted)}
   .desc{color:var(--muted); min-height:44px}
-  a.btn{
+  a.btn, .btn-ghost{
     margin-top:auto; display:inline-flex; align-items:center; gap:8px;
     padding:10px 12px; border-radius:12px; text-decoration:none;
     background:linear-gradient(180deg,#1a2740,#132033); color:var(--text);
     border:1px solid #23314c; font-weight:600;
+    font-size:14px;
   }
-  a.btn:hover{ background:linear-gradient(180deg,#1e2f51,#162640); border-color:#2c3b5c }
-  .icon{width:26px; height:26px; display:inline-grid; place-items:center; border-radius:8px;
-        background:#18243c; border:1px solid #283553; font-size:16px}
+  a.btn:hover, .btn-ghost:hover{
+    background:linear-gradient(180deg,#1e2f51,#162640); border-color:#2c3b5c;
+  }
+  .btn-ghost{
+    background:transparent;
+    border-style:dashed;
+  }
+  .icon{
+    width:26px; height:26px; display:inline-grid; place-items:center; border-radius:8px;
+    background:#18243c; border:1px solid #283553; font-size:16px
+  }
   footer{margin-top:26px; text-align:center; color:var(--muted); font-size:14px}
+
+  .view{display:none}
+  .view.active{display:block}
+
+  .top-actions{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;
+  }
 </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>Bernio – rozcestník</h1>
+      <div>
+        <h1>Bernio – rozcestník</h1>
+        <div class="breadcrumb">
+          <span id="crumb-root">Hlavní menu</span>
+          <span id="crumb-sep" style="display:none;"> › </span>
+          <strong id="crumb-leaf" style="display:none;"></strong>
+        </div>
+      </div>
       <div class="muted">Rychlé odkazy na projekty</div>
     </header>
 
-    <section class="grid">
+    <!-- Hlavní menu -->
+    <section class="view active" id="view-home">
+      <div class="grid">
+        <!-- Deskovy -->
+        <article class="card clickable" data-view="deskovy">
+          <div class="title">
+            <span class="icon">🎲</span>
+            <span>Deskovy</span>
+            <span class="pill">hry</span>
+          </div>
+          <div class="desc">Digitální pomůcky k deskovým hrám – bodování, písmenkové kostky a aktivity.</div>
+          <div class="btn-ghost">Otevřít sekci Deskovy</div>
+        </article>
 
-      <!-- Zpěvníček -->
-      <article class="card">
-        <div class="title">
-          <span class="icon">🎸</span>
-          <span>Zpěvníček</span>
-          <span class="pill">/zpjevnicek</span>
-        </div>
-        <div class="desc">Offline zpěvníček s akordy (ChordPro/UG), rychlé vyhledávání a čisté zobrazení.</div>
-        <a class="btn" href="https://berniocal.github.io/zpjevnicek/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
-      </article>
+        <!-- Škola -->
+        <article class="card clickable" data-view="skola">
+          <div class="title">
+            <span class="icon">🏫</span>
+            <span>Škola</span>
+            <span class="pill">výuka</span>
+          </div>
+          <div class="desc">Nástroje pro matematiku, fyziku, laboratorní práce, zasedací pořádek a sdílení obrazovky.</div>
+          <div class="btn-ghost">Otevřít sekci Škola</div>
+        </article>
 
-      <!-- Bernio (kalkulačka) -->
-      <article class="card">
-        <div class="title">
-          <span class="icon">🧮</span>
-          <span>Bernio</span>
-          <span class="pill">/Bernio</span>
-        </div>
-        <div class="desc">Vědecká kalkulačka ve stylu Casio s promyšleným ovládáním a režimy.</div>
-        <a class="btn" href="https://berniocal.github.io/Bernio/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
-      </article>
+        <!-- Zpjěvníček – přímý odkaz -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">🎸</span>
+            <span>Zpjěvníček</span>
+            <span class="pill">/zpjevnicek</span>
+          </div>
+          <div class="desc">Offline zpěvníček s akordy (ChordPro/UG), vyhledáváním a čistým zobrazením.</div>
+          <a class="btn" href="https://berniocal.github.io/zpjevnicek/" target="_blank" rel="noopener">
+            Otevřít Zpjěvníček ↗
+          </a>
+        </article>
+      </div>
+    </section>
 
-      <!-- Ámos -->
-      <article class="card">
-        <div class="title">
-          <span class="icon">🎲</span>
-          <span>Ámos</span>
-          <span class="pill">/amos</span>
-        </div>
-        <div class="desc">Hra s písmenkovými kostkami: spojuj, skládej slova, trénuj rychlost a slovní zásobu.</div>
-        <a class="btn" href="https://berniocal.github.io/amos/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
-      </article>
+    <!-- Deskovy -->
+    <section class="view" id="view-deskovy">
+      <div class="top-actions">
+        <button type="button" class="btn-ghost" id="back-from-deskovy">← Zpět na hlavní menu</button>
+      </div>
+      <div class="grid">
 
-      <!-- b-recorder -->
-      <article class="card">
-        <div class="title">
-          <span class="icon">🎙️</span>
-          <span>B-Recorder</span>
-          <span class="pill">/b-recorder</span>
-        </div>
-        <div class="desc">Jednoduché nahrávání zvuku v prohlížeči, export souborů a organizace záznamů.</div>
-        <a class="btn" href="https://berniocal.github.io/b-recorder/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
-      </article>
+        <!-- Aktivity -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">🎭</span>
+            <span>Aktivity</span>
+            <span class="pill">/aktivity</span>
+          </div>
+          <div class="desc">Pantomima, vysvětlování a kreslení s časovačem a bodováním týmů.</div>
+          <a class="btn" href="https://berniocal.github.io/aktivity/" target="_blank" rel="noopener">
+            Otevřít Aktivity ↗
+          </a>
+        </article>
 
-      <!-- Zápisník -->
-      <article class="card">
-        <div class="title">
-          <span class="icon">📝</span>
-          <span>Zápisník</span>
-          <span class="pill">/zapisnik</span>
-        </div>
-        <div class="desc">Rychlé poznámky, checklisty a drobné plánování – vždy po ruce.</div>
-        <a class="btn" href="https://berniocal.github.io/zapisnik/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
-      </article>
+        <!-- Ámos -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">🎲</span>
+            <span>Ámos</span>
+            <span class="pill">/amos</span>
+          </div>
+          <div class="desc">Hra s písmenkovými kostkami – skládej slova a trénuj slovní zásobu.</div>
+          <a class="btn" href="https://berniocal.github.io/amos/" target="_blank" rel="noopener">
+            Otevřít Ámos ↗
+          </a>
+        </article>
 
-      <!-- B-Frame -->
-      <article class="card">
-        <div class="title">
-          <span class="icon">🎞️</span>
-          <span>B-Frame</span>
-          <span class="pill">/b-frame</span>
-        </div>
-        <div class="desc">Prohlížení videa po jednotlivých snímcích, označování a export klíčových frameů.</div>
-        <a class="btn" href="https://berniocal.github.io/b-frame/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
-      </article>
+        <!-- Bodování -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">📊</span>
+            <span>Bodování</span>
+            <span class="pill">/bodovani</span>
+          </div>
+          <div class="desc">Jednoduché bodování hráčů a týmů při hrách a soutěžích.</div>
+          <a class="btn" href="https://berniocal.github.io/bodovani/" target="_blank" rel="noopener">
+            Otevřít Bodování ↗
+          </a>
+        </article>
 
-      <!-- Zlomky -->
-      <article class="card">
-        <div class="title">
-          <span class="icon">➗</span>
-          <span>Zlomky</span>
-          <span class="pill">/zlomky</span>
-        </div>
-        <div class="desc">Procvičování zlomků s okamžitou zpětnou vazbou – ideální pro 1. ročník SŠ.</div>
-        <a class="btn" href="https://berniocal.github.io/zlomky/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
-      </article>
+      </div>
+    </section>
 
-      <!-- Berniátor -->
-      <article class="card">
-        <div class="title">
-          <span class="icon">⚙️</span>
-          <span>Berniátor</span>
-          <span class="pill">/berniator</span>
-        </div>
-        <div class="desc">Generátor vln, zvuku a dalších nástrojů pro fyziku – vše přímo v prohlížeči.</div>
-        <a class="btn" href="https://berniocal.github.io/berniator/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
-      </article>
+    <!-- Škola -->
+    <section class="view" id="view-skola">
+      <div class="top-actions">
+        <button type="button" class="btn-ghost" id="back-from-skola">← Zpět na hlavní menu</button>
+      </div>
+      <div class="grid">
 
-      <!-- Zasedák -->
-      <article class="card">
-        <div class="title">
-          <span class="icon">🪑</span>
-          <span>Zasedák</span>
-          <span class="pill">/zasedak</span>
-        </div>
-        <div class="desc">Tvorba zasedacích pořádků se zámky, tiskem a exportem do PNG/PDF.</div>
-        <a class="btn" href="https://berniocal.github.io/zasedak/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
-      </article>
+        <!-- B-Frame -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">🎞️</span>
+            <span>B-Frame</span>
+            <span class="pill">/b-frame</span>
+          </div>
+          <div class="desc">Prohlížení videa po jednotlivých snímcích, označování a export klíčových frameů.</div>
+          <a class="btn" href="https://berniocal.github.io/b-frame/" target="_blank" rel="noopener">
+            Otevřít B-Frame ↗
+          </a>
+        </article>
 
-      <!-- Zrcadlení obrazovky -->
-      <article class="card">
-        <div class="title">
-          <span class="icon">🖥️</span>
-          <span>Zrcadlení obrazovky</span>
-          <span class="pill">/zrcadleni</span>
-        </div>
-        <div class="desc">Nástroj pro sdílení obrazovky telefonu nebo počítače pomocí AirDroid Cast.</div>
-        <a class="btn" href="https://berniocal.github.io/zrcadleni/" target="_blank" rel="noopener">Otevřít aplikaci ↗</a>
-      </article>
+        <!-- B-Recorder -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">🎙️</span>
+            <span>B-Recorder</span>
+            <span class="pill">/b-recorder</span>
+          </div>
+          <div class="desc">Nahrávání zvuku v prohlížeči, ukládání a organizace nahrávek.</div>
+          <a class="btn" href="https://berniocal.github.io/b-recorder/" target="_blank" rel="noopener">
+            Otevřít B-Recorder ↗
+          </a>
+        </article>
 
+        <!-- Berniator -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">⚙️</span>
+            <span>Berniator</span>
+            <span class="pill">/berniator</span>
+          </div>
+          <div class="desc">Generátor vln, zvuku a dalších nástrojů do hodin fyziky.</div>
+          <a class="btn" href="https://berniocal.github.io/berniator/" target="_blank" rel="noopener">
+            Otevřít Berniator ↗
+          </a>
+        </article>
+
+        <!-- Bernio (kalkulačka) -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">🧮</span>
+            <span>Bernio</span>
+            <span class="pill">/Bernio</span>
+          </div>
+          <div class="desc">Vědecká kalkulačka ve stylu Casio s promyšleným ovládáním.</div>
+          <a class="btn" href="https://berniocal.github.io/Bernio/" target="_blank" rel="noopener">
+            Otevřít Bernio ↗
+          </a>
+        </article>
+
+        <!-- Hlavní rozcestník Bernio (root) -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">🧭</span>
+            <span>Hlavní rozcestník Bernio</span>
+            <span class="pill">/</span>
+          </div>
+          <div class="desc">Hlavní stránka s přehledem projektů na berniocal.github.io.</div>
+          <a class="btn" href="https://berniocal.github.io/" target="_blank" rel="noopener">
+            Otevřít hlavní rozcestník ↗
+          </a>
+        </article>
+
+        <!-- Matematiky – opakování 6. třídy -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">➗</span>
+            <span>Matematiky – opakování 6. třídy</span>
+            <span class="pill">/zlomky</span>
+          </div>
+          <div class="desc">Procvičování základů matematiky (zlomky, operace, přemýšlení nad čísly).</div>
+          <a class="btn" href="https://berniocal.github.io/zlomky/" target="_blank" rel="noopener">
+            Otevřít Matematiky ↗
+          </a>
+        </article>
+
+        <!-- Zasedák -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">🪑</span>
+            <span>Zasedák</span>
+            <span class="pill">/zasedak</span>
+          </div>
+          <div class="desc">Tvorba zasedacích pořádků se zámky, tiskem a exportem.</div>
+          <a class="btn" href="https://berniocal.github.io/zasedak/" target="_blank" rel="noopener">
+            Otevřít Zasedák ↗
+          </a>
+        </article>
+
+        <!-- Zrcadlení obrazovky -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">🖥️</span>
+            <span>Zrcadlení obrazovky</span>
+            <span class="pill">/zrcadleni</span>
+          </div>
+          <div class="desc">Sdílení obrazovky telefonu nebo počítače pomocí AirDroid Cast.</div>
+          <a class="btn" href="https://berniocal.github.io/zrcadleni/" target="_blank" rel="noopener">
+            Otevřít Zrcadlení ↗
+          </a>
+        </article>
+
+      </div>
     </section>
 
     <footer>
@@ -175,7 +297,51 @@
   </div>
 
 <script>
-  document.getElementById('y').textContent = new Date().getFullYear();
+  const yearEl = document.getElementById('y');
+  yearEl.textContent = new Date().getFullYear();
+
+  const views = {
+    home: document.getElementById('view-home'),
+    deskovy: document.getElementById('view-deskovy'),
+    skola: document.getElementById('view-skola')
+  };
+
+  const crumbRoot = document.getElementById('crumb-root');
+  const crumbSep = document.getElementById('crumb-sep');
+  const crumbLeaf = document.getElementById('crumb-leaf');
+
+  function showView(name){
+    for (const key in views){
+      views[key].classList.toggle('active', key === name);
+    }
+    if (name === 'home'){
+      crumbRoot.textContent = 'Hlavní menu';
+      crumbSep.style.display = 'none';
+      crumbLeaf.style.display = 'none';
+    } else if (name === 'deskovy'){
+      crumbRoot.textContent = 'Hlavní menu';
+      crumbSep.style.display = '';
+      crumbLeaf.style.display = '';
+      crumbLeaf.textContent = 'Deskovy';
+    } else if (name === 'skola'){
+      crumbRoot.textContent = 'Hlavní menu';
+      crumbSep.style.display = '';
+      crumbLeaf.style.display = '';
+      crumbLeaf.textContent = 'Škola';
+    }
+  }
+
+  // Kliknutí na hlavní karty
+  document.querySelectorAll('.card.clickable').forEach(card => {
+    card.addEventListener('click', () => {
+      const v = card.getAttribute('data-view');
+      if (v) showView(v);
+    });
+  });
+
+  // Zpět tlačítka
+  document.getElementById('back-from-deskovy').addEventListener('click', () => showView('home'));
+  document.getElementById('back-from-skola').addEventListener('click', () => showView('home'));
 </script>
 </body>
 </html>
