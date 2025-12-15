@@ -91,15 +91,15 @@
     <!-- Hlavní menu -->
     <section class="view active" id="view-home">
       <div class="grid">
-        <!-- Deskovy -->
+        <!-- Hry -->
         <article class="card clickable" data-view="deskovy">
           <div class="title">
             <span class="icon">🎲</span>
-            <span>Deskovy</span>
-            <span class="pill">hry</span>
+            <span>Hry</span>
+            <span class="pill">zábava</span>
           </div>
-          <div class="desc">Digitální pomůcky k deskovým hrám – bodování, písmenkové kostky a aktivity.</div>
-          <div class="btn-ghost">Otevřít sekci Deskovy</div>
+          <div class="desc">Deskové, pohybové a reakční hry.</div>
+          <div class="btn-ghost">Otevřít sekci Hry</div>
         </article>
 
         <!-- Škola -->
@@ -128,7 +128,7 @@
       </div>
     </section>
 
-    <!-- Deskovy -->
+    <!-- Hry (dříve Deskovy) -->
     <section class="view" id="view-deskovy">
       <div class="top-actions">
         <button type="button" class="btn-ghost" id="back-from-deskovy">← Zpět na hlavní menu</button>
@@ -145,6 +145,45 @@
           <div class="desc">Pantomima, vysvětlování a kreslení s časovačem a bodováním týmů.</div>
           <a class="btn" href="https://berniocal.github.io/aktivity/" target="_blank" rel="noopener">
             Otevřít Aktivity ↗
+          </a>
+        </article>
+
+        <!-- Kartografy -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">🗺️</span>
+            <span>Kartografy</span>
+            <span class="pill">/kartografove</span>
+          </div>
+          <div class="desc">Digitální podpora ke Kartografům – rychlé bodování a přehled.</div>
+          <a class="btn" href="https://berniocal.github.io/kartografove/" target="_blank" rel="noopener">
+            Otevřít Kartografy ↗
+          </a>
+        </article>
+
+        <!-- Reakce -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">⚡</span>
+            <span>Reakce</span>
+            <span class="pill">/reakce</span>
+          </div>
+          <div class="desc">Reakční hry a rychlé postřehové výzvy (časovače, kola, skóre).</div>
+          <a class="btn" href="https://berniocal.github.io/reakce/" target="_blank" rel="noopener">
+            Otevřít Reakce ↗
+          </a>
+        </article>
+
+        <!-- Světla -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">💡</span>
+            <span>Světla</span>
+            <span class="pill">/svetla</span>
+          </div>
+          <div class="desc">Hry se světly a barvami – režimy, rychlost, náhoda, zábavné výzvy.</div>
+          <a class="btn" href="https://berniocal.github.io/svetla/" target="_blank" rel="noopener">
+            Otevřít Světla ↗
           </a>
         </article>
 
@@ -322,7 +361,7 @@
       crumbRoot.textContent = 'Hlavní menu';
       crumbSep.style.display = '';
       crumbLeaf.style.display = '';
-      crumbLeaf.textContent = 'Deskovy';
+      crumbLeaf.textContent = 'Hry';
     } else if (name === 'skola'){
       crumbRoot.textContent = 'Hlavní menu';
       crumbSep.style.display = '';
