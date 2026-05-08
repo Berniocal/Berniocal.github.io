@@ -176,17 +176,26 @@ body{
           <div class="btn-ghost">Otevřít sekci Škola</div>
         </article>
 
-        <!-- Zpjěvníček – přímý odkaz -->
-        <article class="card">
+        <!-- Hudba -->
+        <article class="card clickable" data-view="hudba">
           <div class="title">
             <span class="icon">🎸</span>
-            <span>Zpjěvníček</span>
-            <span class="pill">/zpjevnicek</span>
+            <span>Hudba</span>
+            <span class="pill">akordy</span>
           </div>
-          <div class="desc">Offline zpěvníček s akordy (ChordPro/UG), vyhledáváním a playlisty.</div>
-          <a class="btn" href="https://berniocal.github.io/zpjevnicek/" target="_blank" rel="noopener">
-            Otevřít Zpjěvníček ↗
-          </a>
+          <div class="desc">Zpěvníky, akordy, playlisty a převody hudebních formátů.</div>
+          <div class="btn-ghost">Otevřít sekci Hudba</div>
+        </article>
+
+        <!-- Jiné -->
+        <article class="card clickable" data-view="jine">
+          <div class="title">
+            <span class="icon">🧹</span>
+            <span>Jiné</span>
+            <span class="pill">užitečné</span>
+          </div>
+          <div class="desc">Další užitečné nástroje a upozornění.</div>
+          <div class="btn-ghost">Otevřít sekci Jiné</div>
         </article>
       </div>
     </section>
@@ -231,7 +240,7 @@ body{
           </div>
           <div class="desc">Jednoduché stopování času při deskových hrách.</div>
           <a class="btn" href="https://berniocal.github.io/casovac/" target="_blank" rel="noopener">
-            Otevřít Časvoač ↗
+            Otevřít Časovač ↗
           </a>
         </article>
         
@@ -292,6 +301,32 @@ body{
           <div class="desc">Stopky pro hraní šachu</div>
           <a class="btn" href="https://berniocal.github.io/sachy-stopky/" target="_blank" rel="noopener">
             Otevřít Šachy - stopky ↗
+          </a>
+        </article>
+
+        <!-- Dobble -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">🎯</span>
+            <span>Dobble</span>
+            <span class="pill">/dobble</span>
+          </div>
+          <div class="desc">Postřehová hra na styl Dobble – najdi společný symbol rychleji než ostatní.</div>
+          <a class="btn" href="https://bernio.cz/dobble" target="_blank" rel="noopener">
+            Otevřít Dobble ↗
+          </a>
+        </article>
+
+        <!-- Klikačka -->
+        <article class="card">
+          <div class="title">
+            <span class="icon">⚡</span>
+            <span>Klikačka</span>
+            <span class="pill">/klikacka</span>
+          </div>
+          <div class="desc">Rychlá postřehová hra až pro 4 hráče na jednom zařízení.</div>
+          <a class="btn" href="https://bernio.cz/klikacka" target="_blank" rel="noopener">
+            Otevřít Klikačku ↗
           </a>
         </article>
 
@@ -435,8 +470,154 @@ body{
       Otevřít Zrcadlení ↗
     </a>
   </article>
+  <!-- Družice -->
+  <article class="card">
+    <div class="title">
+      <span class="icon">🛰️</span>
+      <span>Družice</span>
+      <span class="pill">/druzice</span>
+    </div>
+    <div class="desc">Pohyb družic v centrálním gravitačním poli Země – kruhové a eliptické dráhy, úniková rychlost a energie.</div>
+    <a class="btn" href="https://bernio.cz/druzice" target="_blank" rel="noopener">
+      Otevřít Družice ↗
+    </a>
+  </article>
+
+  <!-- Tíhové zrychlení -->
+  <article class="card">
+    <div class="title">
+      <span class="icon">🌍</span>
+      <span>Tíhové zrychlení</span>
+      <span class="pill">/tihove</span>
+    </div>
+    <div class="desc">Rozdíl mezi gravitačním a tíhovým zrychlením Země včetně odstředivého zrychlení a zeměpisné šířky.</div>
+    <a class="btn" href="https://bernio.cz/tihove" target="_blank" rel="noopener">
+      Otevřít Tíhové ↗
+    </a>
+  </article>
+
+  <!-- Obvody -->
+  <article class="card">
+    <div class="title">
+      <span class="icon">🔌</span>
+      <span>Obvody</span>
+      <span class="pill">/obvody</span>
+    </div>
+    <div class="desc">Interaktivní elektrické obvody s rezistory a kondenzátory – skládání, výpočty a simulace.</div>
+    <a class="btn" href="https://bernio.cz/obvody" target="_blank" rel="noopener">
+      Otevřít Obvody ↗
+    </a>
+  </article>
+
+  <!-- Optika -->
+  <article class="card">
+    <div class="title">
+      <span class="icon">🔎</span>
+      <span>Optika</span>
+      <span class="pill">/optika</span>
+    </div>
+    <div class="desc">Paprsková optika pro čočky a zrcadla – konstrukce obrazů a hlavní paprsky.</div>
+    <a class="btn" href="https://bernio.cz/optika" target="_blank" rel="noopener">
+      Otevřít Optiku ↗
+    </a>
+  </article>
 
 </div>
+    </section>
+
+
+    <!-- Hudba -->
+    <section class="view" id="view-hudba">
+      <div class="top-actions">
+        <button type="button" class="btn-ghost" id="back-from-hudba">← Zpět na hlavní menu</button>
+      </div>
+
+      <div class="grid">
+
+        <article class="card">
+          <div class="title">
+            <span class="icon">🎵</span>
+            <span>Zpjěvníček</span>
+            <span class="pill">/zpjevnicek</span>
+          </div>
+          <div class="desc">Offline zpěvníček s akordy, playlisty a podporou ChordPro.</div>
+          <a class="btn" href="https://bernio.cz/zpjevnicek" target="_blank" rel="noopener">
+            Otevřít Zpjěvníček ↗
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="title">
+            <span class="icon">📻</span>
+            <span>ZPS</span>
+            <span class="pill">/zps</span>
+          </div>
+          <div class="desc">Generátor playlistů a seznamů skladeb pro školní zpěvníky a scholy.</div>
+          <a class="btn" href="https://bernio.cz/zps" target="_blank" rel="noopener">
+            Otevřít ZPS ↗
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="title">
+            <span class="icon">🎼</span>
+            <span>Akordy → ChordPro</span>
+            <span class="pill">/akordy</span>
+          </div>
+          <div class="desc">Vlož akordy z Kytary.cz a aplikace z nich udělá písničku ve formátu ChordPro.</div>
+          <a class="btn" href="https://bernio.cz/akordy" target="_blank" rel="noopener">
+            Otevřít Akordy ↗
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="title">
+            <span class="icon">✂️</span>
+            <span>Zkracovač</span>
+            <span class="pill">/zkracovac</span>
+          </div>
+          <div class="desc">Pro písničky s akordy z Wordu – zkrátí mezery podle nastavených procent pro převod do stylu Ultimate Guitar.</div>
+          <a class="btn" href="https://bernio.cz/zkracovac" target="_blank" rel="noopener">
+            Otevřít Zkracovač ↗
+          </a>
+        </article>
+
+        <article class="card">
+          <div class="title">
+            <span class="icon">🔄</span>
+            <span>Converter</span>
+            <span class="pill">/converter</span>
+          </div>
+          <div class="desc">Převádí hudební zápisy mezi formáty Ultimate Guitar a ChordPro.</div>
+          <a class="btn" href="https://bernio.cz/converter" target="_blank" rel="noopener">
+            Otevřít Converter ↗
+          </a>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- Jiné -->
+    <section class="view" id="view-jine">
+      <div class="top-actions">
+        <button type="button" class="btn-ghost" id="back-from-jine">← Zpět na hlavní menu</button>
+      </div>
+
+      <div class="grid">
+
+        <article class="card">
+          <div class="title">
+            <span class="icon">🚗</span>
+            <span>Blokové čištění</span>
+            <span class="pill">/cisteni</span>
+          </div>
+          <div class="desc">Nech si posílat upozornění, kdy bude v Žabovřeskách na tvé ulici blokové čištění.</div>
+          <a class="btn" href="https://bernio.cz/cisteni" target="_blank" rel="noopener">
+            Otevřít Čištění ↗
+          </a>
+        </article>
+
+      </div>
     </section>
 
 <footer>
@@ -480,7 +661,9 @@ body{
   const views = {
     home: document.getElementById('view-home'),
     deskovy: document.getElementById('view-deskovy'),
-    skola: document.getElementById('view-skola')
+    skola: document.getElementById('view-skola'),
+    hudba: document.getElementById('view-hudba'),
+    jine: document.getElementById('view-jine')
   };
 
   const crumbRoot = document.getElementById('crumb-root');
@@ -505,6 +688,16 @@ body{
       crumbSep.style.display = '';
       crumbLeaf.style.display = '';
       crumbLeaf.textContent = 'Škola';
+    } else if (name === 'hudba'){
+      crumbRoot.textContent = 'Hlavní menu';
+      crumbSep.style.display = '';
+      crumbLeaf.style.display = '';
+      crumbLeaf.textContent = 'Hudba';
+    } else if (name === 'jine'){
+      crumbRoot.textContent = 'Hlavní menu';
+      crumbSep.style.display = '';
+      crumbLeaf.style.display = '';
+      crumbLeaf.textContent = 'Jiné';
     }
   }
 
@@ -519,7 +712,8 @@ body{
   // Zpět tlačítka
   document.getElementById('back-from-deskovy').addEventListener('click', () => showView('home'));
   document.getElementById('back-from-skola').addEventListener('click', () => showView('home'));
+  document.getElementById('back-from-hudba').addEventListener('click', () => showView('home'));
+  document.getElementById('back-from-jine').addEventListener('click', () => showView('home'));
 </script>
 </body>
 </html>
-
