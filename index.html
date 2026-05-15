@@ -361,6 +361,16 @@ body{
     </a>
 </article><article class="card">
 <div class="title">
+<span class="icon">🧩</span>
+<span>Generátor rovnic</span>
+<span class="pill">/math</span>
+</div>
+<div class="desc">Editor a generátor rovnic pro matematiku.</div>
+<a class="btn" href="https://bernio.cz/math" rel="noopener" target="_blank">
+      Otevřít Generátor rovnic ↗
+    </a>
+</article><article class="card">
+<div class="title">
 <span class="icon">➗</span>
 <span>Matematika – opakování 6. třídy</span>
 <span class="pill">/zlomky</span>
@@ -401,6 +411,27 @@ body{
     </a>
 </article><article class="card">
 <div class="title">
+<span class="icon">✂️</span>
+<span>Řezy těles</span>
+<span class="pill">/rezy</span>
+</div>
+<div class="desc">Interaktivní konstrukce řezů těles.</div>
+<a class="btn" href="https://bernio.cz/rezy" rel="noopener" target="_blank">
+      Otevřít Řezy těles ↗
+    </a>
+</article><article class="card">
+<div class="title">
+<span class="icon">📦</span>
+<span>Stereometrie</span>
+<span class="pill">/stereometrie</span>
+</div>
+<div class="desc">Nástroje a procvičování pro prostorovou geometrii.</div>
+<a class="btn" href="https://bernio.cz/stereometrie" rel="noopener" target="_blank">
+      Otevřít Stereometrii ↗
+    </a>
+
+</article><article class="card">
+<div class="title">
 <span class="icon">🌍</span>
 <span>Tíhové zrychlení</span>
 <span class="pill">/tihove</span>
@@ -419,26 +450,7 @@ body{
 <a class="btn" href="https://berniocal.github.io/zasedak/" rel="noopener" target="_blank">
       Otevřít Zasedák ↗
     </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🖥️</span>
-<span>Zrcadlení obrazovky</span>
-<span class="pill">/zrcadleni</span>
-</div>
-<div class="desc">Sdílení obrazovky telefonu na PC.</div>
-<a class="btn" href="https://berniocal.github.io/zrcadleni/" rel="noopener" target="_blank">
-      Otevřít Zrcadlení ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🌧️</span>
-<span>Šumy</span>
-<span class="pill">/sumy</span>
-</div>
-<div class="desc">Generátor šumu a ambientních zvuků.</div>
-<a class="btn" href="https://berniocal.github.io/sumy/" rel="noopener" target="_blank">
-      Otevřít Šumy ↗
-    </a>
+
 </article></div>
 </section>
 <!-- Hudba -->
@@ -511,8 +523,38 @@ body{
 </div>
 <div class="desc">Nech si posílat upozornění, kdy bude v Žabovřeskách na tvé ulici blokové čištění.</div>
 <a class="btn" href="https://bernio.cz/cisteni" rel="noopener" target="_blank">
-            Otevřít Čištění ↗
-          </a>
+      Otevřít Čištění ↗
+    </a>
+</article><article class="card">
+<div class="title">
+<span class="icon">✋</span>
+<span>Hlasování na rychlost</span>
+<span class="pill">/vote</span>
+</div>
+<div class="desc">Rychlé hlasování, které seřadí hráče podle času kliknutí.</div>
+<a class="btn" href="https://bernio.cz/vote" rel="noopener" target="_blank">
+      Otevřít Hlasování ↗
+    </a>
+</article><article class="card">
+<div class="title">
+<span class="icon">🌧️</span>
+<span>Šumy</span>
+<span class="pill">/sumy</span>
+</div>
+<div class="desc">Generátor šumu a ambientních zvuků.</div>
+<a class="btn" href="https://berniocal.github.io/sumy/" rel="noopener" target="_blank">
+      Otevřít Šumy ↗
+    </a>
+  </article><article class="card">
+<div class="title">
+<span class="icon">🖥️</span>
+<span>Zrcadlení obrazovky</span>
+<span class="pill">/zrcadleni</span>
+</div>
+<div class="desc">Sdílení obrazovky telefonu na PC.</div>
+<a class="btn" href="https://berniocal.github.io/zrcadleni/" rel="noopener" target="_blank">
+      Otevřít Zrcadlení ↗
+    </a>
 </article></div>
 </section>
 <footer>
@@ -563,7 +605,7 @@ body{
   const crumbSep = document.getElementById('crumb-sep');
   const crumbLeaf = document.getElementById('crumb-leaf');
 
-  function showView(name){
+  function showView(name, push = false){
     for (const key in views){
       views[key].classList.toggle('active', key === name);
     }
@@ -592,21 +634,38 @@ body{
       crumbLeaf.style.display = '';
       crumbLeaf.textContent = 'Jiné';
     }
+
+    if (push){
+      const hash = name === 'home' ? '' : '#' + name;
+      history.pushState({ view: name }, '', hash || location.pathname + location.search);
+    }
   }
+
+  function viewFromHash(){
+    const hashView = location.hash.replace('#', '');
+    return views[hashView] ? hashView : 'home';
+  }
+
+  history.replaceState({ view: viewFromHash() }, '', location.href);
+  showView(viewFromHash());
+
+  window.addEventListener('popstate', () => {
+    showView(viewFromHash());
+  });
 
   // Kliknutí na hlavní karty
   document.querySelectorAll('.card.clickable').forEach(card => {
     card.addEventListener('click', () => {
       const v = card.getAttribute('data-view');
-      if (v) showView(v);
+      if (v) showView(v, true);
     });
   });
 
   // Zpět tlačítka
-  document.getElementById('back-from-deskovy').addEventListener('click', () => showView('home'));
-  document.getElementById('back-from-skola').addEventListener('click', () => showView('home'));
-  document.getElementById('back-from-hudba').addEventListener('click', () => showView('home'));
-  document.getElementById('back-from-jine').addEventListener('click', () => showView('home'));
+  document.getElementById('back-from-deskovy').addEventListener('click', () => showView('home', true));
+  document.getElementById('back-from-skola').addEventListener('click', () => showView('home', true));
+  document.getElementById('back-from-hudba').addEventListener('click', () => showView('home', true));
+  document.getElementById('back-from-jine').addEventListener('click', () => showView('home', true));
 </script>
 </div></body>
 </html>
