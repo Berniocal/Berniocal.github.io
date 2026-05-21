@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="cs">
 <head>
 <meta charset="utf-8"/>
@@ -151,423 +150,443 @@ body{
 <div class="muted">Rychlé odkazy na projekty</div>
 </div>
 </header>
-<!-- Hlavní menu -->
+
 <section class="view active" id="view-home">
-<div class="grid"><article class="card clickable" data-view="deskovy">
-<div class="title">
-<span class="icon">🎲</span>
-<span>Hry</span>
-<span class="pill">zábava</span>
-</div>
-<div class="desc">Deskové, pohybové a reakční hry.</div>
+<div class="grid">
+<article class="card clickable" data-view="fyzika">
+<div class="title"><span class="icon">⚛️</span><span>Fyzika</span><span class="pill">sekce</span></div>
+<div class="desc">Simulace, experimenty, optika, mechanika a laboratorní nástroje.</div>
+<div class="btn-ghost">Otevřít sekci Fyzika</div>
+</article>
+<article class="card clickable" data-view="hry">
+<div class="title"><span class="icon">🎲</span><span>Hry</span><span class="pill">sekce</span></div>
+<div class="desc">Deskové, pohybové, postřehové a týmové hry.</div>
 <div class="btn-ghost">Otevřít sekci Hry</div>
-</article><article class="card clickable" data-view="hudba">
-<div class="title">
-<span class="icon">🎸</span>
-<span>Hudba</span>
-<span class="pill">akordy</span>
-</div>
+</article>
+<article class="card clickable" data-view="hudba">
+<div class="title"><span class="icon">🎸</span><span>Hudba</span><span class="pill">sekce</span></div>
 <div class="desc">Zpěvníky, akordy, playlisty a převody hudebních formátů.</div>
 <div class="btn-ghost">Otevřít sekci Hudba</div>
-</article><article class="card clickable" data-view="jine">
-<div class="title">
-<span class="icon">🧹</span>
-<span>Jiné</span>
-<span class="pill">užitečné</span>
-</div>
-<div class="desc">Další užitečné nástroje a upozornění.</div>
+</article>
+<article class="card clickable" data-view="jine">
+<div class="title"><span class="icon">🧹</span><span>Jiné</span><span class="pill">sekce</span></div>
+<div class="desc">Další užitečné nástroje, upozornění a školní pomůcky.</div>
 <div class="btn-ghost">Otevřít sekci Jiné</div>
-</article><article class="card clickable" data-view="skola">
-<div class="title">
-<span class="icon">🏫</span>
-<span>Škola</span>
-<span class="pill">výuka</span>
+</article>
+<article class="card clickable" data-view="matika">
+<div class="title"><span class="icon">📐</span><span>Matika</span><span class="pill">sekce</span></div>
+<div class="desc">Kalkulačky, generátory, procvičování a prostorová geometrie.</div>
+<div class="btn-ghost">Otevřít sekci Matika</div>
+</article>
 </div>
-<div class="desc">Nástroje pro matematiku, fyziku, laboratorní práce, zasedací pořádek a sdílení obrazovky.</div>
-<div class="btn-ghost">Otevřít sekci Škola</div>
-</article></div>
 </section>
-<!-- Hry (dříve Deskovy) -->
-<section class="view" id="view-deskovy">
+
+<!-- Fyzika -->
+<section class="view" id="view-fyzika">
 <div class="top-actions">
-<button class="btn-ghost" id="back-from-deskovy" type="button">← Zpět na hlavní menu</button>
+<button class="btn-ghost" id="back-from-fyzika" type="button">← Zpět na hlavní menu</button>
 </div>
-<div class="grid"><article class="card">
+<div class="grid">
+<article class="card">
+<div class="title">
+<span class="icon">📐</span>
+<span>Angle meter</span>
+<span class="pill">/anglemeter</span>
+</div>
+<div class="desc">Měření náklonu telefonu v reálném čase pomocí senzorů mobilu.</div>
+<a class="btn" href="https://berniocal.github.io/anglemeter/" rel="noopener" target="_blank">Otevřít Angle meter ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🎞️</span>
+<span>B-Frame</span>
+<span class="pill">/b-frame</span>
+</div>
+<div class="desc">Prohlížení videa po jednotlivých snímcích pro analýzu pohybu a fyzikálních pokusů.</div>
+<a class="btn" href="https://berniocal.github.io/b-frame/" rel="noopener" target="_blank">Otevřít B-Frame ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🎨</span>
+<span>Barvoslepost</span>
+<span class="pill">/barvoslepost</span>
+</div>
+<div class="desc">Test rozlišování barev a pomůcka k vysvětlení barvocitu.</div>
+<a class="btn" href="https://berniocal.github.io/barvoslepost/" rel="noopener" target="_blank">Otevřít Barvoslepost ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">〰</span>
+<span>Berniator</span>
+<span class="pill">/berniator</span>
+</div>
+<div class="desc">Generátor zvukových vln a frekvencí pro akustické pokusy.</div>
+<a class="btn" href="https://berniocal.github.io/berniator/" rel="noopener" target="_blank">Otevřít Berniator ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🛰️</span>
+<span>Družice</span>
+<span class="pill">/druzice</span>
+</div>
+<div class="desc">Pohyb družic v gravitačním poli, orbitální rychlost, energie a dráhy.</div>
+<a class="btn" href="https://bernio.cz/druzice" rel="noopener" target="_blank">Otevřít Družice ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🔌</span>
+<span>Obvody</span>
+<span class="pill">/obvody</span>
+</div>
+<div class="desc">Interaktivní elektrické obvody, výpočty a simulace chování součástek.</div>
+<a class="btn" href="https://bernio.cz/obvody" rel="noopener" target="_blank">Otevřít Obvody ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🔎</span>
+<span>Optika</span>
+<span class="pill">/optika</span>
+</div>
+<div class="desc">Paprsková optika pro čočky a zrcadla včetně konstrukce obrazů.</div>
+<a class="btn" href="https://bernio.cz/optika" rel="noopener" target="_blank">Otevřít Optika ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🔺</span>
+<span>Pyramid</span>
+<span class="pill">/pyramide</span>
+</div>
+<div class="desc">3D pyramidový hologram typu Pepper’s Ghost pro demonstraci odrazu světla.</div>
+<a class="btn" href="https://berniocal.github.io/pyramide/" rel="noopener" target="_blank">Otevřít Pyramid ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">☀️</span>
+<span>Sluneční soustava</span>
+<span class="pill">/slunecni</span>
+</div>
+<div class="desc">Model Sluneční soustavy s oběžnými drahami a fyzikálními údaji.</div>
+<a class="btn" href="https://bernio.cz/slunecni" rel="noopener" target="_blank">Otevřít Sluneční soustava ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🌈</span>
+<span>Tenká vrstva</span>
+<span class="pill">/tenka</span>
+</div>
+<div class="desc">Interference světla na tenké vrstvě a vznik barevných odlesků.</div>
+<a class="btn" href="https://bernio.cz/tenka" rel="noopener" target="_blank">Otevřít Tenká vrstva ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🌍</span>
+<span>Tíhové zrychlení</span>
+<span class="pill">/tihove</span>
+</div>
+<div class="desc">Rozdíl mezi gravitačním a tíhovým zrychlením včetně vlivu rotace Země.</div>
+<a class="btn" href="https://bernio.cz/tihove" rel="noopener" target="_blank">Otevřít Tíhové zrychlení ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">📡</span>
+<span>Vernier</span>
+<span class="pill">/vernier</span>
+</div>
+<div class="desc">Nástroje pro práci se senzory Vernier a zpracování laboratorních měření.</div>
+<a class="btn" href="https://bernio.cz/vernier" rel="noopener" target="_blank">Otevřít Vernier ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🏀</span>
+<span>Vrhy</span>
+<span class="pill">/vrhy</span>
+</div>
+<div class="desc">Simulace vrhů v homogenním gravitačním poli s trajektorií a grafy.</div>
+<a class="btn" href="https://bernio.cz/vrhy" rel="noopener" target="_blank">Otevřít Vrhy ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">👁️</span>
+<span>Zorný úhel</span>
+<span class="pill">/zorny</span>
+</div>
+<div class="desc">Vizualizace zorného úhlu, zorného pole a toho, jak pozorovatel vidí objekt.</div>
+<a class="btn" href="https://bernio.cz/zorny" rel="noopener" target="_blank">Otevřít Zorný úhel ↗</a>
+</article>
+</div>
+</section>
+<!-- Hry -->
+<section class="view" id="view-hry">
+<div class="top-actions">
+<button class="btn-ghost" id="back-from-hry" type="button">← Zpět na hlavní menu</button>
+</div>
+<div class="grid">
+<article class="card">
 <div class="title">
 <span class="icon">🎭</span>
 <span>Aktivity</span>
 <span class="pill">/aktivity</span>
 </div>
 <div class="desc">Pantomima, vysvětlování a kreslení s časovačem a bodováním týmů.</div>
-<a class="btn" href="https://berniocal.github.io/aktivity/" rel="noopener" target="_blank">
-            Otevřít Aktivity ↗
-          </a>
-</article><article class="card">
+<a class="btn" href="https://berniocal.github.io/aktivity/" rel="noopener" target="_blank">Otevřít Aktivity ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">📊</span>
 <span>Bodování</span>
 <span class="pill">/bodovani</span>
 </div>
 <div class="desc">Jednoduché bodování hráčů a týmů při hrách a soutěžích.</div>
-<a class="btn" href="https://berniocal.github.io/bodovani/" rel="noopener" target="_blank">
-            Otevřít Bodování ↗
-          </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🎯</span>
-<span>NajdiTo!</span>
-<span class="pill">/najdito</span>
-</div>
-<div class="desc">Postřehová hra – najdi společný symbol rychleji než ostatní.</div>
-<a class="btn" href="https://bernio.cz/najdito" rel="noopener" target="_blank">
-            Otevřít NajdiTo! ↗
-          </a>
-</article><article class="card">
+<a class="btn" href="https://berniocal.github.io/bodovani/" rel="noopener" target="_blank">Otevřít Bodování ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">⚡</span>
 <span>Klikačka</span>
 <span class="pill">/klikacka</span>
 </div>
 <div class="desc">Rychlá postřehová hra až pro 4 hráče na jednom zařízení.</div>
-<a class="btn" href="https://bernio.cz/klikacka" rel="noopener" target="_blank">
-            Otevřít Klikačku ↗
-          </a>
-</article><article class="card">
+<a class="btn" href="https://bernio.cz/klikacka" rel="noopener" target="_blank">Otevřít Klikačka ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🎯</span>
+<span>NajdiTo!</span>
+<span class="pill">/najdito</span>
+</div>
+<div class="desc">Postřehová hra – najdi společný symbol rychleji než ostatní.</div>
+<a class="btn" href="https://bernio.cz/najdito" rel="noopener" target="_blank">Otevřít NajdiTo! ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">🗺️</span>
 <span>Plánek</span>
 <span class="pill">/planek</span>
 </div>
-<div class="desc">Plánek s mapou, kam můžete zakreslovat různé terény.</div>
-<a class="btn" href="https://berniocal.github.io/planek/" rel="noopener" target="_blank">
-            Otevřít Plánek ↗
-          </a>
-</article><article class="card">
+<div class="desc">Plánek s mapou, do které můžete zakreslovat terény a herní situace.</div>
+<a class="btn" href="https://berniocal.github.io/planek/" rel="noopener" target="_blank">Otevřít Plánek ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">⚡</span>
 <span>Reakční doba</span>
 <span class="pill">/reakce</span>
 </div>
-<div class="desc">Změř si reakční dobu na základě vizuálního, zvukového nebo hmatového podnětu.</div>
-<a class="btn" href="https://berniocal.github.io/reakce/" rel="noopener" target="_blank">
-            Otevřít Reakce ↗
-          </a>
-</article><article class="card">
+<div class="desc">Měření reakční doby na vizuální, zvukový nebo hmatový podnět.</div>
+<a class="btn" href="https://berniocal.github.io/reakce/" rel="noopener" target="_blank">Otevřít Reakční doba ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">🅰️</span>
 <span>Skládání slov</span>
 <span class="pill">/skladani</span>
 </div>
 <div class="desc">Hra s písmenky – skládej slova a trénuj slovní zásobu.</div>
-<a class="btn" href="https://berniocal.github.io/skladani/" rel="noopener" target="_blank">
-            Otevřít Skládání slov ↗
-          </a>
-</article><article class="card">
+<a class="btn" href="https://berniocal.github.io/skladani/" rel="noopener" target="_blank">Otevřít Skládání slov ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">💡</span>
 <span>Světla</span>
 <span class="pill">/svetla</span>
 </div>
-<div class="desc">Fitlight trénink s telefony.</div>
-<a class="btn" href="https://berniocal.github.io/svetla/?v=20250915a" rel="noopener" target="_blank">
-            Otevřít Světla ↗
-          </a>
-</article><article class="card">
+<div class="desc">Fitlight trénink s telefony pro postřeh a rychlou reakci.</div>
+<a class="btn" href="https://berniocal.github.io/svetla/?v=20250915a" rel="noopener" target="_blank">Otevřít Světla ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">⏲️</span>
 <span>Časovač</span>
 <span class="pill">/casovac</span>
 </div>
 <div class="desc">Jednoduché stopování času při deskových hrách.</div>
-<a class="btn" href="https://berniocal.github.io/casovac/" rel="noopener" target="_blank">
-            Otevřít Časovač ↗
-          </a>
-</article><article class="card">
+<a class="btn" href="https://berniocal.github.io/casovac/" rel="noopener" target="_blank">Otevřít Časovač ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">♟️</span>
 <span>Šachy - stopky</span>
 <span class="pill">/sachy-stopky</span>
 </div>
-<div class="desc">Stopky pro hraní šachu</div>
-<a class="btn" href="https://berniocal.github.io/sachy-stopky/" rel="noopener" target="_blank">
-            Otevřít Šachy - stopky ↗
-          </a>
-</article></div>
-</section>
-<!-- Škola -->
-<section class="view" id="view-skola">
-<div class="top-actions">
-<button class="btn-ghost" id="back-from-skola" type="button">← Zpět na hlavní menu</button>
+<div class="desc">Stopky pro hraní šachu a měření času hráčů.</div>
+<a class="btn" href="https://berniocal.github.io/sachy-stopky/" rel="noopener" target="_blank">Otevřít Šachy - stopky ↗</a>
+</article>
 </div>
-<div class="grid"><article class="card">
-<div class="title">
-<span class="icon">📐</span>
-<span>Angle meter</span>
-<span class="pill">/anglemeter</span>
-</div>
-<div class="desc">Měření náklonu telefonu v reálném čase.</div>
-<a class="btn" href="https://berniocal.github.io/anglemeter/" rel="noopener" target="_blank">
-      Otevřít Angle meter ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🎞️</span>
-<span>B-Frame</span>
-<span class="pill">/b-frame</span>
-</div>
-<div class="desc">Prohlížení videa po jednotlivých snímcích.</div>
-<a class="btn" href="https://berniocal.github.io/b-frame/" rel="noopener" target="_blank">
-      Otevřít B-Frame ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🎨</span>
-<span>Barvoslepost</span>
-<span class="pill">/barvoslepost</span>
-</div>
-<div class="desc">Test rozlišování barev.</div>
-<a class="btn" href="https://berniocal.github.io/barvoslepost/" rel="noopener" target="_blank">
-      Otevřít Barvoslepost ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">〰</span>
-<span>Berniator</span>
-<span class="pill">/berniator</span>
-</div>
-<div class="desc">Generátor zvukových vln.</div>
-<a class="btn" href="https://berniocal.github.io/berniator/" rel="noopener" target="_blank">
-      Otevřít Berniator ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🧮</span>
-<span>Bernio</span>
-<span class="pill">/Bernio</span>
-</div>
-<div class="desc">Vědecká kalkulačka ve stylu Casio.</div>
-<a class="btn" href="https://berniocal.github.io/Bernio/" rel="noopener" target="_blank">
-      Otevřít Bernio ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🛰️</span>
-<span>Družice</span>
-<span class="pill">/druzice</span>
-</div>
-<div class="desc">Pohyb družic v centrálním gravitačním poli Země – kruhové a eliptické dráhy, úniková rychlost a energie.</div>
-<a class="btn" href="https://bernio.cz/druzice" rel="noopener" target="_blank">
-      Otevřít Družice ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🧩</span>
-<span>Generátor rovnic</span>
-<span class="pill">/math</span>
-</div>
-<div class="desc">Editor a generátor rovnic pro matematiku.</div>
-<a class="btn" href="https://bernio.cz/math" rel="noopener" target="_blank">
-      Otevřít Generátor rovnic ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">➗</span>
-<span>Matematika – opakování 6. třídy</span>
-<span class="pill">/zlomky</span>
-</div>
-<div class="desc">Procvičování základů matematiky.</div>
-<a class="btn" href="https://berniocal.github.io/zlomky/" rel="noopener" target="_blank">
-      Otevřít Matematiku ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🔌</span>
-<span>Obvody</span>
-<span class="pill">/obvody</span>
-</div>
-<div class="desc">Interaktivní elektrické obvody s rezistory a kondenzátory – skládání, výpočty a simulace.</div>
-<a class="btn" href="https://bernio.cz/obvody" rel="noopener" target="_blank">
-      Otevřít Obvody ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🔎</span>
-<span>Optika</span>
-<span class="pill">/optika</span>
-</div>
-<div class="desc">Paprsková optika pro čočky a zrcadla – konstrukce obrazů a hlavní paprsky.</div>
-<a class="btn" href="https://bernio.cz/optika" rel="noopener" target="_blank">
-      Otevřít Optiku ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🔺</span>
-<span>Pyramid</span>
-<span class="pill">/pyramide</span>
-</div>
-<div class="desc">3D pyramidový hologram (Pepper’s Ghost).</div>
-<a class="btn" href="https://berniocal.github.io/pyramide/" rel="noopener" target="_blank">
-      Otevřít Pyramid ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">✂️</span>
-<span>Řezy těles</span>
-<span class="pill">/rezy</span>
-</div>
-<div class="desc">Interaktivní konstrukce řezů těles.</div>
-<a class="btn" href="https://bernio.cz/rezy" rel="noopener" target="_blank">
-      Otevřít Řezy těles ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">📦</span>
-<span>Stereometrie</span>
-<span class="pill">/stereometrie</span>
-</div>
-<div class="desc">Nástroje a procvičování pro prostorovou geometrii.</div>
-<a class="btn" href="https://bernio.cz/stereometrie" rel="noopener" target="_blank">
-      Otevřít Stereometrii ↗
-    </a>
-
-</article><article class="card">
-<div class="title">
-<span class="icon">🌍</span>
-<span>Tíhové zrychlení</span>
-<span class="pill">/tihove</span>
-</div>
-<div class="desc">Rozdíl mezi gravitačním a tíhovým zrychlením Země včetně odstředivého zrychlení a zeměpisné šířky.</div>
-<a class="btn" href="https://bernio.cz/tihove" rel="noopener" target="_blank">
-      Otevřít Tíhové ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🪑</span>
-<span>Zasedák</span>
-<span class="pill">/zasedak</span>
-</div>
-<div class="desc">Tvorba zasedacích pořádků.</div>
-<a class="btn" href="https://berniocal.github.io/zasedak/" rel="noopener" target="_blank">
-      Otevřít Zasedák ↗
-    </a>
-
-</article></div>
 </section>
 <!-- Hudba -->
 <section class="view" id="view-hudba">
 <div class="top-actions">
 <button class="btn-ghost" id="back-from-hudba" type="button">← Zpět na hlavní menu</button>
 </div>
-<div class="grid"><article class="card">
+<div class="grid">
+<article class="card">
 <div class="title">
 <span class="icon">🎼</span>
 <span>Akordy → ChordPro</span>
 <span class="pill">/akordy</span>
 </div>
-<div class="desc">Vlož akordy z Kytary.cz a aplikace z nich udělá písničku ve formátu ChordPro.</div>
-<a class="btn" href="https://bernio.cz/akordy" rel="noopener" target="_blank">
-            Otevřít Akordy ↗
-          </a>
-</article><article class="card">
+<div class="desc">Vložené akordy z Kytary.cz převede do formátu ChordPro.</div>
+<a class="btn" href="https://bernio.cz/akordy" rel="noopener" target="_blank">Otevřít Akordy → ChordPro ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">🔄</span>
 <span>Converter</span>
 <span class="pill">/converter</span>
 </div>
 <div class="desc">Převádí hudební zápisy mezi formáty Ultimate Guitar a ChordPro.</div>
-<a class="btn" href="https://bernio.cz/converter" rel="noopener" target="_blank">
-            Otevřít Converter ↗
-          </a>
-</article><article class="card">
+<a class="btn" href="https://bernio.cz/converter" rel="noopener" target="_blank">Otevřít Converter ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">✂️</span>
 <span>Zkracovač</span>
 <span class="pill">/zkracovac</span>
 </div>
-<div class="desc">Pro písničky s akordy z Wordu – zkrátí mezery podle nastavených procent pro převod do stylu Ultimate Guitar.</div>
-<a class="btn" href="https://bernio.cz/zkracovac" rel="noopener" target="_blank">
-            Otevřít Zkracovač ↗
-          </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🎵</span>
-<span>Zpjěvníček</span>
-<span class="pill">/zpjevnicek</span>
-</div>
-<div class="desc">Offline zpěvníček s akordy, playlisty a podporou ChordPro.</div>
-<a class="btn" href="https://bernio.cz/zpjevnicek" rel="noopener" target="_blank">
-            Otevřít Zpjěvníček ↗
-          </a>
-</article><article class="card">
+<div class="desc">Zkrátí mezery v písničkách s akordy podle nastavených procent.</div>
+<a class="btn" href="https://bernio.cz/zkracovac" rel="noopener" target="_blank">Otevřít Zkracovač ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">📻</span>
 <span>ZPS</span>
 <span class="pill">/zps</span>
 </div>
-<div class="desc">Generátor playlistů do aplikace Zpěvník pro scholy. Lze generovat i offline nebo sdílet přes QR kódy.</div>
-<a class="btn" href="https://bernio.cz/zps" rel="noopener" target="_blank">
-            Otevřít ZPS ↗
-          </a>
-</article></div>
+<div class="desc">Generátor playlistů do aplikace Zpěvník pro scholy včetně sdílení přes QR.</div>
+<a class="btn" href="https://bernio.cz/zps" rel="noopener" target="_blank">Otevřít ZPS ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🎵</span>
+<span>Zpěvníček</span>
+<span class="pill">/zpjevnicek</span>
+</div>
+<div class="desc">Offline zpěvníček s akordy, playlisty a podporou ChordPro.</div>
+<a class="btn" href="https://bernio.cz/zpjevnicek" rel="noopener" target="_blank">Otevřít Zpěvníček ↗</a>
+</article>
+</div>
 </section>
 <!-- Jiné -->
 <section class="view" id="view-jine">
 <div class="top-actions">
 <button class="btn-ghost" id="back-from-jine" type="button">← Zpět na hlavní menu</button>
 </div>
-<div class="grid"><article class="card">
+<div class="grid">
+<article class="card">
+<div class="title">
+<span class="icon">✋</span>
+<span>bernio.cz/vote</span>
+<span class="pill">/vote</span>
+</div>
+<div class="desc">Rychlé hlasování, které seřadí účastníky podle času kliknutí.</div>
+<a class="btn" href="https://bernio.cz/vote" rel="noopener" target="_blank">Otevřít bernio.cz/vote ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">🚗</span>
 <span>Blokové čištění</span>
 <span class="pill">/cisteni</span>
 </div>
-<div class="desc">Nech si posílat upozornění, kdy bude v Žabovřeskách na tvé ulici blokové čištění.</div>
-<a class="btn" href="https://bernio.cz/cisteni" rel="noopener" target="_blank">
-      Otevřít Čištění ↗
-    </a>
-</article><article class="card">
+<div class="desc">Upozornění na termíny blokového čištění pro vybranou ulici.</div>
+<a class="btn" href="https://bernio.cz/cisteni" rel="noopener" target="_blank">Otevřít Blokové čištění ↗</a>
+</article>
+<article class="card">
 <div class="title">
-<span class="icon">✋</span>
-<span>Hlasování na rychlost</span>
-<span class="pill">/vote</span>
+<span class="icon">🪑</span>
+<span>Zasedák</span>
+<span class="pill">/zasedak</span>
 </div>
-<div class="desc">Rychlé hlasování, které seřadí hráče podle času kliknutí.</div>
-<a class="btn" href="https://bernio.cz/vote" rel="noopener" target="_blank">
-      Otevřít Hlasování ↗
-    </a>
-</article><article class="card">
-<div class="title">
-<span class="icon">🌧️</span>
-<span>Šumy</span>
-<span class="pill">/sumy</span>
-</div>
-<div class="desc">Generátor šumu a ambientních zvuků.</div>
-<a class="btn" href="https://berniocal.github.io/sumy/" rel="noopener" target="_blank">
-      Otevřít Šumy ↗
-    </a>
-  </article><article class="card">
+<div class="desc">Tvorba a úprava zasedacích pořádků pro třídu nebo skupinu.</div>
+<a class="btn" href="https://berniocal.github.io/zasedak/" rel="noopener" target="_blank">Otevřít Zasedák ↗</a>
+</article>
+<article class="card">
 <div class="title">
 <span class="icon">🖥️</span>
 <span>Zrcadlení obrazovky</span>
 <span class="pill">/zrcadleni</span>
 </div>
-<div class="desc">Sdílení obrazovky telefonu na PC.</div>
-<a class="btn" href="https://berniocal.github.io/zrcadleni/" rel="noopener" target="_blank">
-      Otevřít Zrcadlení ↗
-    </a>
-</article></div>
+<div class="desc">Sdílení obrazovky telefonu na počítač.</div>
+<a class="btn" href="https://berniocal.github.io/zrcadleni/" rel="noopener" target="_blank">Otevřít Zrcadlení obrazovky ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🌧️</span>
+<span>Šumy</span>
+<span class="pill">/sumy</span>
+</div>
+<div class="desc">Generátor šumu a ambientních zvuků pro soustředění nebo relaxaci.</div>
+<a class="btn" href="https://berniocal.github.io/sumy/" rel="noopener" target="_blank">Otevřít Šumy ↗</a>
+</article>
+</div>
 </section>
+<!-- Matika -->
+<section class="view" id="view-matika">
+<div class="top-actions">
+<button class="btn-ghost" id="back-from-matika" type="button">← Zpět na hlavní menu</button>
+</div>
+<div class="grid">
+<article class="card">
+<div class="title">
+<span class="icon">🧮</span>
+<span>Bernio</span>
+<span class="pill">/Bernio</span>
+</div>
+<div class="desc">Vědecká kalkulačka ve stylu Casio pro rychlé výpočty.</div>
+<a class="btn" href="https://berniocal.github.io/Bernio/" rel="noopener" target="_blank">Otevřít Bernio ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🧩</span>
+<span>Generátor rovnic</span>
+<span class="pill">/math</span>
+</div>
+<div class="desc">Editor a generátor rovnic s podporou algebraických úprav a krokování.</div>
+<a class="btn" href="https://bernio.cz/math" rel="noopener" target="_blank">Otevřít Generátor rovnic ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">📘</span>
+<span>Opakování 6. třídy</span>
+<span class="pill">/zlomky</span>
+</div>
+<div class="desc">Souhrnné opakování matematiky 6. třídy formou interaktivního procvičování.</div>
+<a class="btn" href="https://berniocal.github.io/zlomky/" rel="noopener" target="_blank">Otevřít Opakování 6. třídy ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">📦</span>
+<span>Stereometrie</span>
+<span class="pill">/stereometrie</span>
+</div>
+<div class="desc">Prostorová geometrie, řezy těles, vzdálenosti bodů, přímek a rovin, odchylky.</div>
+<a class="btn" href="https://bernio.cz/stereometrie" rel="noopener" target="_blank">Otevřít Stereometrie ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">🛢️</span>
+<span>Válec</span>
+<span class="pill">/valec</span>
+</div>
+<div class="desc">Dynamický 3D model válce, síť válce a výpočty objemu a povrchu.</div>
+<a class="btn" href="https://bernio.cz/valec" rel="noopener" target="_blank">Otevřít Válec ↗</a>
+</article>
+<article class="card">
+<div class="title">
+<span class="icon">✂️</span>
+<span>Řezy těles</span>
+<span class="pill">/rezy</span>
+</div>
+<div class="desc">Interaktivní konstrukce řezů krychlí, hranolů a dalších těles.</div>
+<a class="btn" href="https://bernio.cz/rezy" rel="noopener" target="_blank">Otevřít Řezy těles ↗</a>
+</article>
+</div>
+</section>
+
 <footer>
 <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
-<a class="btn" href="QR.png" rel="noopener" target="_blank">
-      Chci podpořit autora
-    </a>
-<div class="muted" style="font-size:13px;">
-      Podpora je dobrovolná, aplikace zůstávají zdarma.
-    </div>
-<div>
-      © <span id="y"></span> Bernio
-    </div>
+<a class="btn" href="QR.png" rel="noopener" target="_blank">Chci podpořit autora</a>
+<div class="muted" style="font-size:13px;">Podpora je dobrovolná, aplikace zůstávají zdarma.</div>
+<div>© <span id="y"></span> Bernio</div>
 </div>
 </footer>
 <script>
@@ -595,10 +614,20 @@ body{
 
   const views = {
     home: document.getElementById('view-home'),
-    deskovy: document.getElementById('view-deskovy'),
-    skola: document.getElementById('view-skola'),
+    fyzika: document.getElementById('view-fyzika'),
+    hry: document.getElementById('view-hry'),
     hudba: document.getElementById('view-hudba'),
-    jine: document.getElementById('view-jine')
+    jine: document.getElementById('view-jine'),
+    matika: document.getElementById('view-matika')
+  };
+
+  const viewNames = {
+    home: 'Hlavní menu',
+    fyzika: 'Fyzika',
+    hry: 'Hry',
+    hudba: 'Hudba',
+    jine: 'Jiné',
+    matika: 'Matika'
   };
 
   const crumbRoot = document.getElementById('crumb-root');
@@ -606,35 +635,20 @@ body{
   const crumbLeaf = document.getElementById('crumb-leaf');
 
   function showView(name, push = false){
+    if (!views[name]) name = 'home';
     for (const key in views){
-      views[key].classList.toggle('active', key === name);
+      if (views[key]) views[key].classList.toggle('active', key === name);
     }
     if (name === 'home'){
       crumbRoot.textContent = 'Hlavní menu';
       crumbSep.style.display = 'none';
       crumbLeaf.style.display = 'none';
-    } else if (name === 'deskovy'){
+    } else {
       crumbRoot.textContent = 'Hlavní menu';
       crumbSep.style.display = '';
       crumbLeaf.style.display = '';
-      crumbLeaf.textContent = 'Hry';
-    } else if (name === 'skola'){
-      crumbRoot.textContent = 'Hlavní menu';
-      crumbSep.style.display = '';
-      crumbLeaf.style.display = '';
-      crumbLeaf.textContent = 'Škola';
-    } else if (name === 'hudba'){
-      crumbRoot.textContent = 'Hlavní menu';
-      crumbSep.style.display = '';
-      crumbLeaf.style.display = '';
-      crumbLeaf.textContent = 'Hudba';
-    } else if (name === 'jine'){
-      crumbRoot.textContent = 'Hlavní menu';
-      crumbSep.style.display = '';
-      crumbLeaf.style.display = '';
-      crumbLeaf.textContent = 'Jiné';
+      crumbLeaf.textContent = viewNames[name] || name;
     }
-
     if (push){
       const hash = name === 'home' ? '' : '#' + name;
       history.pushState({ view: name }, '', hash || location.pathname + location.search);
@@ -649,11 +663,8 @@ body{
   history.replaceState({ view: viewFromHash() }, '', location.href);
   showView(viewFromHash());
 
-  window.addEventListener('popstate', () => {
-    showView(viewFromHash());
-  });
+  window.addEventListener('popstate', () => showView(viewFromHash()));
 
-  // Kliknutí na hlavní karty
   document.querySelectorAll('.card.clickable').forEach(card => {
     card.addEventListener('click', () => {
       const v = card.getAttribute('data-view');
@@ -661,11 +672,11 @@ body{
     });
   });
 
-  // Zpět tlačítka
-  document.getElementById('back-from-deskovy').addEventListener('click', () => showView('home', true));
-  document.getElementById('back-from-skola').addEventListener('click', () => showView('home', true));
-  document.getElementById('back-from-hudba').addEventListener('click', () => showView('home', true));
-  document.getElementById('back-from-jine').addEventListener('click', () => showView('home', true));
+  ['fyzika','hry','hudba','jine','matika'].forEach(name => {
+    const btn = document.getElementById('back-from-' + name);
+    if (btn) btn.addEventListener('click', () => showView('home', true));
+  });
 </script>
-</div></body>
+</div>
+</body>
 </html>
