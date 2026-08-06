@@ -10,4 +10,20 @@ const map=Object.fromEntries([...document.querySelectorAll('.view')].map(v=>[v.i
 function trail(n){let a=[];while(n&&n!=='home'){a.unshift(NAMES[n]||n);n=PARENTS[n]}return a.join(' › ')}function show(n,push=false){if(!map[n])n='home';Object.entries(map).forEach(([k,v])=>v.classList.toggle('active',k===n));const h=n!=='home';sep.hidden=!h;crumb.hidden=!h;crumb.textContent=h?trail(n):'';if(push)history.pushState({view:n},'',n==='home'?location.pathname+location.search:'#'+n);scrollTo(0,0)}function fromHash(){const n=location.hash.slice(1);return map[n]?n:'home'}
 document.addEventListener('click',e=>{const c=e.target.closest('[data-view]'),b=e.target.closest('[data-back]');if(c)show(c.dataset.view,true);else if(b)show(b.dataset.back,true)});history.replaceState({view:fromHash()},'',location.href);addEventListener('popstate',()=>show(fromHash()));show(fromHash());
 const theme=document.getElementById('theme'),saved=localStorage.getItem('bernio-theme'),pref=matchMedia('(prefers-color-scheme:dark)').matches;function setTheme(t){const d=t==='dark';document.body.classList.toggle('dark',d);theme.textContent=d?'☀️ Světlý režim':'🌙 Tmavý režim';document.querySelector('meta[name="theme-color"]').content=d?'#0b1323':'#f6fbff'}setTheme(saved||(pref?'dark':'light'));theme.onclick=()=>{const n=document.body.classList.contains('dark')?'light':'dark';localStorage.setItem('bernio-theme',n);setTheme(n)};document.getElementById('year').textContent=new Date().getFullYear();
+
+/* alphabeticke-razeni */
+function seraditAplikacePodleAbecedy(){
+  const razeni = new Intl.Collator('cs', { sensitivity: 'base', numeric: true });
+  document.querySelectorAll('.grid').forEach(grid => {
+    const karty = [...grid.children].filter(el => el.classList.contains('card'));
+    karty.sort((a, b) => {
+      const nazevA = a.querySelector('.title span:nth-child(2)')?.textContent.trim() || '';
+      const nazevB = b.querySelector('.title span:nth-child(2)')?.textContent.trim() || '';
+      return razeni.compare(nazevA, nazevB);
+    });
+    karty.forEach(karta => grid.appendChild(karta));
+  });
+}
+seraditAplikacePodleAbecedy();
+document.addEventListener('DOMContentLoaded', seraditAplikacePodleAbecedy, { once: true });
 </script></body></html>
