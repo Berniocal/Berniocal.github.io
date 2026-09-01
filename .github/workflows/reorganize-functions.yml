@@ -1,0 +1,52 @@
+name: Přesunout funkce do podsekce
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == 'Přesunout funkce v Matice'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upravit rozcestník
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          abs_card='["app","🔷","Funkce s absolutní hodnotou","/fceabs","Grafy a transformace funkcí s absolutní hodnotou, předpis z grafu, rovnice a nerovnice.","https://bernio.cz/fceabs"]'
+          quad_card='["app","📈","Kvadratické funkce","/kvadrfce","Tvary kvadratické funkce, určení předpisu ze tří bodů a grafické řešení kvadratických nerovnic.","https://bernio.cz/kvadrfce"]'
+          sub='["sub","funkce","📈","Funkce","Lineární, kvadratické a funkce s absolutní hodnotou na jednom místě."]'
+
+          if abs_card in s:
+              s=s.replace(abs_card,sub,1)
+          if ','+quad_card in s:
+              s=s.replace(','+quad_card,'',1)
+          elif quad_card+',' in s:
+              s=s.replace(quad_card+',','',1)
+
+          section='"funkce":[["app","📈","Lineární funkce","/funkce/linearni","Grafy lineárních funkcí, předpis z grafu, rovnice, nerovnice a jejich soustavy.","https://bernio.cz/funkce/linearni/"],["app","〰️","Kvadratické funkce","/funkce/kvadraticka","Tvary kvadratické funkce, předpis ze tří bodů a grafické řešení kvadratických nerovnic.","https://bernio.cz/funkce/kvadraticka/"],["app","🔷","Funkce s absolutní hodnotou","/funkce/absolutni","Grafy, transformace, předpis z grafu, rovnice a nerovnice s absolutní hodnotou.","https://bernio.cz/funkce/absolutni/"]],'
+          if '"funkce":[' not in s:
+              s=s.replace('"matika":[',section+'"matika":[',1)
+
+          s=s.replace('"matika":"Matika"}', '"matika":"Matika","funkce":"Funkce"}',1)
+          s=s.replace('"matika":"home"}', '"matika":"home","funkce":"matika"}',1)
+          s=s.replace("PARENTS[id]==='home'?'Zpět na hlavní menu':'Zpět do sekce Fyzika'", "PARENTS[id]==='home'?'Zpět na hlavní menu':'Zpět do sekce '+NAMES[PARENTS[id]]")
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "Bernio bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Matika: přidána podsekce Funkce"
+          git push
