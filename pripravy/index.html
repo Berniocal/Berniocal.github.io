@@ -9,21 +9,39 @@
 <style>
 :root{--bg:#f6fbff;--panel:#fff;--panel2:#f3fbf9;--text:#17324a;--muted:#607284;--accent:#f4bd4f;--accent2:#4ec5b0;--accent3:#e96b53;--line:#d9ebef;--shadow:0 16px 42px rgba(23,50,74,.13);--r:24px;--gap:16px}
 body.dark{--bg:#0b1323;--panel:#121e2d;--panel2:#0f1a28;--text:#e9f4fb;--muted:#a5b7c6;--accent:#f7c457;--accent2:#55d1bd;--accent3:#f07a61;--line:#26384c;--shadow:0 18px 46px rgba(0,0,0,.35)}
-*{box-sizing:border-box}html,body{min-height:100%;background:var(--bg)}body{min-height:100vh;margin:0;color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.wrap{max-width:1100px;width:96vw;min-height:100vh;margin:28px auto;padding:14px}header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap;background:rgba(255,255,255,.58);border:1px solid var(--line);border-radius:28px;padding:16px 18px;box-shadow:var(--shadow);backdrop-filter:blur(10px)}body.dark header{background:rgba(18,30,45,.72)}h1{margin:0;font-weight:800;letter-spacing:.2px}.muted{color:var(--muted);font-size:14px}.head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}button{font:inherit}.theme,.back{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:999px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel2));color:var(--text);font-weight:700;cursor:pointer;box-shadow:0 8px 20px rgba(23,50,74,.1);text-decoration:none}.grid{display:grid;gap:var(--gap);grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--r);padding:17px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;min-height:160px;transition:.15s;position:relative;overflow:hidden}.card:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,var(--accent2),var(--accent),var(--accent3))}.card:hover{transform:translateY(-3px);box-shadow:0 18px 46px rgba(23,50,74,.18)}.title{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}.icon{width:34px;height:34px;display:inline-grid;place-items:center;border-radius:12px;background:linear-gradient(135deg,rgba(78,197,176,.22),rgba(244,189,79,.22));border:1px solid var(--line);font-size:19px}.pill{font-size:12px;padding:4px 9px;border-radius:999px;background:rgba(78,197,176,.14);color:var(--muted);border:1px solid rgba(78,197,176,.28)}.desc{color:var(--muted);min-height:44px}.btn{margin-top:auto;display:inline-flex;align-items:center;gap:8px;padding:10px 13px;border-radius:16px;text-decoration:none;font-weight:800;font-size:14px;background:linear-gradient(180deg,#24435f,#17324a);color:#fff;border:1px solid rgba(23,50,74,.18);box-shadow:0 10px 22px rgba(23,50,74,.15)}footer{margin-top:28px;text-align:center;color:var(--muted);font-size:14px}
+*{box-sizing:border-box}html,body{min-height:100%;background:var(--bg)}body{min-height:100vh;margin:0;color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}.wrap{max-width:1100px;width:96vw;min-height:100vh;margin:28px auto;padding:14px}header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap;background:rgba(255,255,255,.58);border:1px solid var(--line);border-radius:28px;padding:16px 18px;box-shadow:var(--shadow);backdrop-filter:blur(10px)}body.dark header{background:rgba(18,30,45,.72)}h1{margin:0;font-weight:800;letter-spacing:.2px}.muted{color:var(--muted);font-size:14px}.head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}button{font:inherit}.theme,.back{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:999px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel2));color:var(--text);font-weight:700;cursor:pointer;box-shadow:0 8px 20px rgba(23,50,74,.1);text-decoration:none}.intro{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:24px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:18px}.intro b{color:var(--text)}.grid{display:grid;gap:var(--gap);grid-template-columns:repeat(2,minmax(0,1fr))}.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;min-height:190px;transition:.15s;position:relative;overflow:hidden}.card:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,var(--accent2),var(--accent),var(--accent3))}.card:hover{transform:translateY(-3px);box-shadow:0 18px 46px rgba(23,50,74,.18)}.title{display:flex;align-items:center;gap:11px;font-weight:800;font-size:22px}.icon{width:42px;height:42px;display:inline-grid;place-items:center;border-radius:14px;background:linear-gradient(135deg,rgba(78,197,176,.22),rgba(244,189,79,.22));border:1px solid var(--line);font-size:23px}.pill{font-size:12px;padding:4px 9px;border-radius:999px;background:rgba(78,197,176,.14);color:var(--muted);border:1px solid rgba(78,197,176,.28)}.desc{color:var(--muted)}.items{margin:0;padding-left:20px;color:var(--muted)}.items li{margin:4px 0}footer{margin-top:28px;text-align:center;color:var(--muted);font-size:14px}@media(max-width:720px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
-  <div><h1>🗂️ Přípravy</h1><div class="muted">Nástroje pro přípravu výuky a školní organizaci</div></div>
+  <div><h1>🗂️ Přípravy</h1><div class="muted">Moje přípravy do hodin matematiky a fyziky</div></div>
   <div class="head"><a class="back" href="/">← Bernio</a><button id="theme" class="theme">🌙 Tmavý režim</button></div>
 </header>
 <main>
+  <div class="intro">
+    Tady budou moje <b>přípravy do hodin</b> a zároveň materiály, které mohou používat <b>žáci při výuce, procvičování a opakování</b>. Nejde o obecné organizační nástroje.
+  </div>
   <div class="grid">
     <article class="card">
-      <div class="title"><span class="icon">🗓️</span><span>Rozvrhář</span><span class="pill">/rozvrhy</span></div>
-      <div class="desc">Tvorba hezkých školních rozvrhů s barvami, ikonami, skupinami, legendami a exportem do PDF/JPG.</div>
-      <a class="btn" href="https://bernio.cz/rozvrhy/">Otevřít Rozvrhář ↗</a>
+      <div class="title"><span class="icon">📐</span><span>Matematika</span><span class="pill">přípravy + žáci</span></div>
+      <div class="desc">Materiály k jednotlivým tématům matematiky pro výklad, procvičování a samostatnou práci.</div>
+      <ul class="items">
+        <li>přípravy do hodin</li>
+        <li>interaktivní materiály</li>
+        <li>procvičování a opakování</li>
+        <li>materiály pro žáky</li>
+      </ul>
+    </article>
+    <article class="card">
+      <div class="title"><span class="icon">⚛️</span><span>Fyzika</span><span class="pill">přípravy + žáci</span></div>
+      <div class="desc">Materiály k jednotlivým tématům fyziky pro výklad, pokusy, procvičování a samostatnou práci.</div>
+      <ul class="items">
+        <li>přípravy do hodin</li>
+        <li>simulace a názorné ukázky</li>
+        <li>příklady a procvičování</li>
+        <li>materiály pro žáky</li>
+      </ul>
     </article>
   </div>
 </main>
