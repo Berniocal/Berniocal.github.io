@@ -1,0 +1,67 @@
+name: Reorganize physics navigation once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/reorganize-physics-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reorganize physics navigation
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          start = s.index('SECTIONS={"fyzika":')
+          vedator_marker = '],"vedator":['
+          vedator_pos = s.index(vedator_marker, start)
+
+          new_before_vedator = '''SECTIONS={"fyzika":[["sub","mechanika","⚙️","Mechanika","Pohyb a gravitační pole, členěné podle školních kapitol."],["sub","elektrina","⚡","Elektřina","Elektrické obvody a další pomůcky pro výuku elektřiny."],["sub","optika_fyz","🔭","Optika","Paprsková optika, interference, zorný úhel a vnímání světla."],["sub","zvuk","🔊","Kmitání, vlnění a zvuk","Zvuk, frekvence, spektrum, hluk a generování signálů."],["sub","vernier_fyz","📡","Vernier","Nástroje a aplikace pro práci se senzory Vernier."],["sub","nastroje_fyz","🧰","Měření a procvičování","Obecné fyzikální nástroje, převody jednotek a procvičování."],["sub","vedator","🎙️","Vedátor","Aplikace k Vedátorskému podcastu a databáze zodpovězených otázek."]],"mechanika":[["sub","kinematika","🏃","Kinematika","Měření a analýza pohybu."],["sub","gravitace","🌍","Gravitační pole","Vrhy, tíhové zrychlení, družice a astronomická měření."]],"kinematika":[["app","🎞️","B-Frame","/b-frame","Prohlížení videa po jednotlivých snímcích pro analýzu pohybu a fyzikálních pokusů.","https://berniocal.github.io/b-frame/"],["app","🎥","Tracker","/tracker","Mobilní videoanalýza pohybu s nastavením měřítka, sledováním bodu a grafy.","https://bernio.cz/tracker"]],"gravitace":[["app","🛰️","Družice","/druzice","Pohyb družic v gravitačním poli, orbitální rychlost, energie a dráhy.","https://bernio.cz/druzice"],["app","🌍","Obvod Země","/ves/obvodzeme","Interaktivní simulace Eratosthenova měření obvodu Země pomocí délky stínů.","https://bernio.cz/ves/obvodzeme"],["app","🌙","Paralaxa","/ves/paralaxa","Měření vzdálenosti Měsíce pomocí paralaxy ze dvou pozorovacích míst.","https://bernio.cz/ves/paralaxa"],["app","☀️","Sluneční soustava","/slunecni","Model Sluneční soustavy s oběžnými drahami a fyzikálními údaji.","https://bernio.cz/slunecni"],["app","🧭","Tíhové zrychlení","/tihove","Rozdíl mezi gravitačním a tíhovým zrychlením včetně vlivu rotace Země.","https://bernio.cz/tihove"],["app","🏀","Vrhy","/vrhy","Simulace svislého, vodorovného a šikmého vrhu s trajektorií a grafy.","https://bernio.cz/vrhy"]],"elektrina":[["app","🔌","Obvody","/obvody","Interaktivní elektrické obvody, výpočty a simulace chování součástek.","https://bernio.cz/obvody"]],"optika_fyz":[["app","🎨","Barvoslepost","/barvoslepost","Test rozlišování barev a pomůcka k vysvětlení barvocitu.","https://berniocal.github.io/barvoslepost/"],["app","🔎","Optika","/optika","Paprsková optika pro čočky a zrcadla včetně konstrukce obrazů.","https://bernio.cz/optika"],["app","🔺","Pyramid","/pyramide","3D pyramidový hologram typu Pepper’s Ghost pro demonstraci odrazu světla.","https://berniocal.github.io/pyramide/"],["app","🌈","Tenká vrstva","/tenka","Interference světla na tenké vrstvě a vznik barevných odlesků.","https://bernio.cz/tenka"],["app","👁️","Zorný úhel","/zorny","Vizualizace zorného úhlu, zorného pole a toho, jak pozorovatel vidí objekt.","https://bernio.cz/zorny"]],"zvuk":[["app","〰","Generátor","/generator","Generátor zvukových vln a frekvencí pro akustické pokusy.","https://bernio.cz/generator"],["app","🔊","Hlukoměr","/hlukomer","Měření hlasitosti v dB, frekvenční spektrum a průběh hluku v čase.","https://bernio.cz/hlukomer"]],"vernier_fyz":[["app","📡","Vernier","/vernier","Nástroje pro práci se senzory Vernier a zpracování laboratorních měření.","https://bernio.cz/vernier"]],"nastroje_fyz":[["app","📐","Angle meter","/anglemeter","Měření náklonu telefonu v reálném čase pomocí senzorů mobilu.","https://berniocal.github.io/anglemeter/"],["app","🔄","Převody jednotek","/pocitadla/prevody","Generátor převodů fyzikálních jednotek pro ZŠ i SŠ s nastavitelnými veličinami a výsledky.","https://bernio.cz/pocitadla/prevody"],["app","🧠","Trenažér fyziky","/trenazer","Procvičování fyzikálních vztahů a slovních úloh s přehledným postupem řešení.","https://bernio.cz/trenazer"]'''
+
+          s = s[:start] + new_before_vedator + s[vedator_pos:]
+
+          # Odstranit starou samostatnou sekci vesmir, její obsah je nově v Gravitačním poli.
+          old_vesmir_start = s.index(',"vesmir":[', s.index('"vedator":['))
+          old_hry = s.index(',"hry":[', old_vesmir_start)
+          s = s[:old_vesmir_start] + s[old_hry:]
+
+          names_start = s.index('NAMES={')
+          names_end = s.index(';\nconst esc=', names_start)
+          new_names = '''NAMES={"home":"Hlavní menu","fyzika":"Fyzika","mechanika":"Mechanika","kinematika":"Kinematika","gravitace":"Gravitační pole","elektrina":"Elektřina","optika_fyz":"Optika","zvuk":"Kmitání, vlnění a zvuk","vernier_fyz":"Vernier","nastroje_fyz":"Měření a procvičování","vedator":"Vedátor","hry":"Hry","hudba":"Hudba","jine":"Jiné","matika":"Matika","funkce":"Funkce"},PARENTS={"fyzika":"home","mechanika":"fyzika","kinematika":"mechanika","gravitace":"mechanika","elektrina":"fyzika","optika_fyz":"fyzika","zvuk":"fyzika","vernier_fyz":"fyzika","nastroje_fyz":"fyzika","vedator":"fyzika","hry":"home","hudba":"home","jine":"home","matika":"home","funkce":"matika"}'''
+          s = s[:names_start] + new_names + s[names_end:]
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Verify navigation
+        run: |
+          grep -Fq '"mechanika","⚙️","Mechanika"' index.html
+          grep -Fq '"kinematika","🏃","Kinematika"' index.html
+          grep -Fq '"gravitace","🌍","Gravitační pole"' index.html
+          grep -Fq '"vernier_fyz","📡","Vernier"' index.html
+          grep -Fq '"Hlukoměr","/hlukomer"' index.html
+          grep -Fq '"kinematika":"mechanika"' index.html
+          grep -Fq '"gravitace":"mechanika"' index.html
+
+      - name: Remove workflow and commit
+        run: |
+          rm -f .github/workflows/reorganize-physics-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Reorganize physics navigation and add Hlukomer"
+          git push
