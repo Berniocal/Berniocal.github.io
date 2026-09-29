@@ -1,0 +1,29 @@
+name: Flatten physics navigation and enlarge cards once
+on:
+  push:
+    paths:
+      - '.github/workflows/flatten-physics-and-enlarge-once.yml'
+      - '.github/scripts/flatten-physics-and-enlarge.py'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update Bernio directory
+        run: python .github/scripts/flatten-physics-and-enlarge.py
+      - name: Verify
+        run: |
+          grep -q 'minmax(270px,1fr)' index.html
+          grep -q 'Elektrické obvody' index.html
+          grep -q 'https://bernio.cz/vernier' index.html
+      - name: Remove one-time files and commit
+        run: |
+          rm .github/workflows/flatten-physics-and-enlarge-once.yml
+          rm .github/scripts/flatten-physics-and-enlarge.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html .github/workflows/flatten-physics-and-enlarge-once.yml .github/scripts/flatten-physics-and-enlarge.py
+          git commit -m 'Flatten Vernier and circuits links and enlarge directory cards'
+          git push
