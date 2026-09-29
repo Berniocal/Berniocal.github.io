@@ -1,0 +1,80 @@
+name: Fix physics sections once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/fix-physics-sections-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update physics navigation only
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          # 1) Replace the former Mechanika/Kinematika/Gravitace block with
+          #    top-level Měření, Procvičování and Gravitace sections.
+          start = s.index('"fyzika":[')
+          end = s.index('"elektrina":[', start)
+          new = '''"fyzika":[["sub","mereni_fyz","📏","Měření","Nástroje pro měření a analýzu fyzikálních dějů."],["sub","procvicovani_fyz","🧠","Procvičování","Procvičování fyzikálních vztahů a převodů jednotek."],["sub","gravitace","🌍","Gravitace","Gravitační pole, družice, vrhy a astronomická měření."],["sub","elektrina","⚡","Elektřina","Elektrické obvody a další pomůcky pro výuku elektřiny."],["sub","optika_fyz","🔭","Optika","Paprsková optika, interference, zorný úhel a vnímání světla."],["sub","vernier_fyz","📡","Vernier","Nástroje a aplikace pro práci se senzory Vernier."],["sub","vedator","🎙️","Vedátor","Aplikace k Vedátorskému podcastu a databáze zodpovězených otázek."]],"mereni_fyz":[["app","📐","Angle meter","/anglemeter","Měření náklonu telefonu v reálném čase pomocí senzorů mobilu.","https://berniocal.github.io/anglemeter/"],["app","🎞️","B-Frame","/b-frame","Prohlížení videa po jednotlivých snímcích pro analýzu pohybu a fyzikálních pokusů.","https://berniocal.github.io/b-frame/"],["app","〰","Generátor","/generator","Generátor zvukových vln a frekvencí pro akustické pokusy.","https://bernio.cz/generator"],["app","🔊","Hlukoměr","/hlukomer","Měření hlasitosti v dB, frekvenční spektrum a průběh hluku v čase.","https://bernio.cz/hlukomer"],["app","🎥","Tracker","/tracker","Mobilní videoanalýza pohybu s nastavením měřítka, sledováním bodu a grafy.","https://bernio.cz/tracker"]],"procvicovani_fyz":[["app","🔄","Převody jednotek","/pocitadla/prevody","Generátor převodů fyzikálních jednotek pro ZŠ i SŠ s nastavitelnými veličinami a výsledky.","https://bernio.cz/pocitadla/prevody"],["app","🧠","Trenažér fyziky","/trenazer","Procvičování fyzikálních vztahů a slovních úloh s přehledným postupem řešení.","https://bernio.cz/trenazer"]],"gravitace":[["app","🛰️","Družice","/druzice","Pohyb družic v gravitačním poli, orbitální rychlost, energie a dráhy.","https://bernio.cz/druzice"],["app","🌍","Obvod Země","/ves/obvodzeme","Interaktivní simulace Eratosthenova měření obvodu Země pomocí délky stínů.","https://bernio.cz/ves/obvodzeme"],["app","🌙","Paralaxa","/ves/paralaxa","Měření vzdálenosti Měsíce pomocí paralaxy ze dvou pozorovacích míst.","https://bernio.cz/ves/paralaxa"],["app","☀️","Sluneční soustava","/slunecni","Model Sluneční soustavy s oběžnými drahami a fyzikálními údaji.","https://bernio.cz/slunecni"],["app","🧭","Tíhové zrychlení","/tihove","Rozdíl mezi gravitačním a tíhovým zrychlením včetně vlivu rotace Země.","https://bernio.cz/tihove"],["app","🏀","Vrhy","/vrhy","Simulace svislého, vodorovného a šikmého vrhu s trajektorií a grafy.","https://bernio.cz/vrhy"]],'''
+          s = s[:start] + new + s[end:]
+
+          # 2) Remove the old sound section; its apps now live in Měření.
+          z_start = s.index('"zvuk":[')
+          z_end = s.index('"vernier_fyz":[', z_start)
+          s = s[:z_start] + s[z_end:]
+
+          # 3) Remove the old combined tools section; apps are split into
+          #    Měření and Procvičování.
+          n_start = s.index('"nastroje_fyz":[')
+          n_end = s.index('"vedator":[', n_start)
+          s = s[:n_start] + s[n_end:]
+
+          # 4) Update breadcrumb names and parent relationships.
+          names_start = s.index('NAMES={')
+          names_end = s.index(';\nconst esc=', names_start)
+          names = '''NAMES={"home":"Hlavní menu","fyzika":"Fyzika","mereni_fyz":"Měření","procvicovani_fyz":"Procvičování","gravitace":"Gravitace","elektrina":"Elektřina","optika_fyz":"Optika","vernier_fyz":"Vernier","vedator":"Vedátor","hry":"Hry","hudba":"Hudba","jine":"Jiné","matika":"Matika","funkce":"Funkce"},PARENTS={"fyzika":"home","mereni_fyz":"fyzika","procvicovani_fyz":"fyzika","gravitace":"fyzika","elektrina":"fyzika","optika_fyz":"fyzika","vernier_fyz":"fyzika","vedator":"fyzika","hry":"home","hudba":"home","jine":"home","matika":"home","funkce":"matika"}'''
+          s = s[:names_start] + names + s[names_end:]
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Verify requested structure
+        run: |
+          grep -Fq '"sub","mereni_fyz"' index.html
+          grep -Fq '"sub","procvicovani_fyz"' index.html
+          grep -Fq '"sub","gravitace"' index.html
+          grep -Fq '"app","🎥","Tracker"' index.html
+          grep -Fq '"app","📐","Angle meter"' index.html
+          grep -Fq '"app","🎞️","B-Frame"' index.html
+          grep -Fq '"app","🔊","Hlukoměr"' index.html
+          grep -Fq '"app","〰","Generátor"' index.html
+          grep -Fq '"app","🔄","Převody jednotek"' index.html
+          grep -Fq '"app","🧠","Trenažér fyziky"' index.html
+          ! grep -Fq '"kinematika"' index.html
+          ! grep -Fq '"mechanika"' index.html
+          ! grep -Fq '"zvuk":[' index.html
+          ! grep -Fq '"nastroje_fyz":[' index.html
+
+      - name: Remove workflow and commit
+        run: |
+          rm -f .github/workflows/fix-physics-sections-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Simplify physics navigation sections"
+          git push
