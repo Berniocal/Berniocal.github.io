@@ -1,4 +1,4 @@
-const VERSION="rozuctovani-v1";
+const VERSION="rozuctovani-v2";
 const ASSETS=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
