@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7f8fa">
+<meta name="description" content="Jednoduché rozúčtování společných výdajů.">
+<link rel="manifest" href="./manifest.webmanifest">
+<title>Rozúčtování</title>
+<style>
+:root{color-scheme:light;--bg:#f7f8fa;--surface:#fff;--text:#1c2530;--muted:#78828e;--line:#e7eaee;--accent:#315cc6;--accent-light:#edf2ff;--danger:#be4050;--shadow:0 5px 22px #1d2d4b09}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#11151b;--surface:#1c222b;--text:#f1f3f7;--muted:#9aa5b2;--line:#323b47;--accent:#95aeff;--accent-light:#283653;--danger:#ff9eaa;--shadow:0 5px 24px #0002}}
+*{box-sizing:border-box}html{min-height:100%;background:var(--bg)}body{margin:0;color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);min-height:100dvh}
+button,input,select{font:inherit;color:inherit}button{cursor:pointer}button:disabled{cursor:default;opacity:.38}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+main{max-width:690px;margin:0 auto;padding:34px 18px calc(100px + env(safe-area-inset-bottom))}.top{display:flex;align-items:center;gap:10px;margin-bottom:30px;min-height:48px}.top h1{font-size:24px;line-height:1.2;font-weight:730;letter-spacing:-.55px;margin:0;flex:1;min-width:0;overflow-wrap:anywhere}.top .iconbtn{flex-shrink:0}
+.iconbtn{display:inline-grid;place-items:center;width:40px;height:40px;background:transparent;border:0;border-radius:13px;font-size:24px;line-height:1;color:var(--muted)}.iconbtn:hover{background:var(--accent-light);color:var(--text)}.back{margin-left:-9px}.plus{color:var(--accent);font-size:28px;font-weight:420}
+.sectionhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:25px 0 10px}.sectionhead h2{font-size:16px;font-weight:730;letter-spacing:-.15px;margin:0}.sectionhead .iconbtn{margin:-8px 0}.stack{display:grid;gap:9px}
+.tile,.rowcard{background:var(--surface);border:1px solid var(--line);border-radius:17px;box-shadow:var(--shadow)}
+.tile{width:100%;min-height:70px;display:flex;align-items:center;gap:14px;padding:15px 17px;text-align:left;transition:background .12s}.tile:hover{background:var(--accent-light)}.tile .body{flex:1;min-width:0}.maintext{font-size:16px;font-weight:660;overflow-wrap:anywhere}.subtext{color:var(--muted);font-size:13px;margin-top:3px}.chevron{color:var(--muted);font-size:23px}.quiet{color:var(--muted);font-size:14px;padding:18px 3px}
+.person{min-height:49px;display:flex;align-items:center;gap:10px;padding:5px 9px 5px 16px;border-bottom:1px solid var(--line)}.person:last-child{border-bottom:0}.person .name{flex:1;border:0;background:none;text-align:left;font-weight:540;min-width:0;overflow-wrap:anywhere;padding:7px 0}.person .name:hover{color:var(--accent)}.person .iconbtn{font-size:19px;width:33px;height:33px}.person .iconbtn.del{font-size:23px}
+.formrow{display:flex;align-items:center;gap:9px;padding:11px}.formrow input{flex:1;min-width:0}.input{min-height:42px;border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:10px 12px;min-width:0;width:100%;outline:0}.input:focus{border-color:var(--accent)}.savebtn{border:0;background:var(--accent);color:#fff;border-radius:11px;padding:10px 14px;min-height:42px;font-weight:680}.cancelbtn{border:0;background:transparent;color:var(--muted);border-radius:11px;padding:9px}.addline{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:10px;border:1px dashed var(--line);background:transparent;color:var(--accent);border-radius:13px;font-size:14px;font-weight:640;min-height:45px}
+.totalline{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:24px 0 13px;color:var(--muted);font-size:14px}.totalline strong{font-size:17px;color:var(--text);font-variant-numeric:tabular-nums}
+.bill{display:flex;align-items:center;gap:10px;width:100%;padding:15px 16px;min-height:72px;background:var(--surface);border:1px solid var(--line);border-radius:16px;text-align:left;box-shadow:var(--shadow)}.bill:hover{background:var(--accent-light)}.bill .body{flex:1;min-width:0}.amount{font-weight:720;white-space:nowrap;font-variant-numeric:tabular-nums}.settle{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}.settle .payto{flex:1;min-width:0;overflow-wrap:anywhere}.settle .payto small{display:block;font-size:13px;color:var(--muted)}.settle .amount{font-size:16px}.minor{font-weight:450;color:var(--muted)}.sharebtn{display:inline-flex;align-items:center;gap:7px;border:0;color:var(--accent);background:transparent;font-size:14px;font-weight:700;padding:8px 0}
+dialog{border:0;border-radius:21px;padding:0;width:min(500px,calc(100vw - 24px));max-height:min(90dvh,760px);background:var(--surface);color:var(--text);box-shadow:0 30px 80px #0004}dialog::backdrop{background:#0007}.dialogin{padding:20px;max-height:min(90dvh,760px);overflow:auto}.dialoghead{display:flex;align-items:center;gap:10px;margin-bottom:18px}.dialoghead h2{font-size:20px;letter-spacing:-.4px;flex:1;margin:0}.field{display:grid;gap:7px;margin-bottom:15px}.field label{font-size:13px;font-weight:680;color:var(--muted)}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px}.participant{display:flex;align-items:center;gap:8px;min-height:52px;border-bottom:1px solid var(--line)}.participant .pname{flex:1;min-width:0;overflow-wrap:anywhere}.step{width:36px;height:36px;border:1px solid var(--line);background:var(--surface);border-radius:10px;font-size:20px;line-height:1}.step:hover{background:var(--accent-light)}.weight{width:40px;text-align:center;border:0;background:none;font-variant-numeric:tabular-nums;font-size:16px;padding:7px 0;outline:0}.participant.inactive .pname{color:var(--muted);text-decoration:line-through}.dialogfoot{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:21px}.dialogfoot .left{margin-right:auto}.danger{color:var(--danger);border:0;background:transparent;padding:9px 3px;font-size:14px}.muted{color:var(--muted)}.menubox{position:relative}.menu{position:absolute;z-index:5;right:0;top:42px;background:var(--surface);border:1px solid var(--line);padding:6px;border-radius:13px;box-shadow:0 15px 40px #0002;min-width:155px}.menu button{display:block;width:100%;border:0;text-align:left;background:transparent;padding:10px;border-radius:9px;font-size:14px}.menu button:hover{background:var(--accent-light)}
+@media(max-width:450px){main{padding:18px 13px calc(90px + env(safe-area-inset-bottom))}.top{margin-bottom:22px}.twocol{grid-template-columns:1fr}.dialogin{padding:17px}.step{width:38px;height:38px}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<dialog id="editor"></dialog>
+<input id="importFile" type="file" accept="application/json,.json" hidden>
+<script>
+"use strict";
+(function(){
+const KEY="bernio-rozuctovani-v1", app=document.getElementById("app"), editor=document.getElementById("editor");
+const importFile=document.getElementById("importFile");
+let state={events:[]},eventId=null,addingEvent=false,addingPerson=false,editingPerson=null,draft=null,menu=false;
+function uid(){return typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():"id"+Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function esc(value){return String(value==null?"":value).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function money(cents){return (cents/100).toLocaleString("cs-CZ",{minimumFractionDigits:2,maximumFractionDigits:2})+" Kč"}
+function parseMoney(s){s=String(s||"").replace(/\s/g,"").replace(",",".");if(!/^\d+(\.\d{1,2})?$/.test(s))return null;let n=Number(s);return Number.isSafeInteger(Math.round(n*100))&&n>=0?Math.round(n*100):null}
+function current(){return state.events.find(function(e){return e.id===eventId})}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(err){alert("Data se nepodařilo uložit v tomto prohlížeči.");return false}}
+try{let v=JSON.parse(localStorage.getItem(KEY));if(v&&Array.isArray(v.events))state=v}catch(e){}
+function setEvent(id){eventId=id;addingEvent=false;addingPerson=false;editingPerson=null;menu=false;render()}
+function itemName(e,id){let p=e.people.find(function(p){return p.id===id});return p?p.name:"Neznámá osoba"}
+function splitExpense(ex,e){
+ let active=e.people.map(function(p,i){return {id:p.id,i:i,w:Math.max(0,Math.floor(Number(ex.weights[p.id])||0))}}).filter(function(x){return x.w>0});
+ let sum=active.reduce(function(n,x){return n+x.w},0);
+ if(!sum||!Number.isSafeInteger(ex.amount)||ex.amount<0)return [];
+ let rows=active.map(function(p){let share=ex.amount*p.w/sum;return {id:p.id,c:Math.floor(share),rem:share-Math.floor(share),i:p.i}});
+ let allocated=rows.reduce(function(n,x){return n+x.c},0);
+ rows.sort(function(a,b){return b.rem-a.rem||a.i-b.i});
+ for(let i=0;i<ex.amount-allocated;i++)rows[i].c++;
+ return rows;
+}
+function settlement(e){
+ let bal=Object.fromEntries(e.people.map(function(p){return [p.id,0]}));
+ e.expenses.forEach(function(ex){
+  if(!(ex.payerId in bal))return;
+  let shares=splitExpense(ex,e);
+  if(!shares.length)return;
+  bal[ex.payerId]+=ex.amount;
+  shares.forEach(function(x){bal[x.id]-=x.c});
+ });
+ let debt=e.people.map(function(p){return {id:p.id,n:-bal[p.id]}}).filter(function(x){return x.n>0}).sort(function(a,b){return b.n-a.n});
+ let credit=e.people.map(function(p){return {id:p.id,n:bal[p.id]}}).filter(function(x){return x.n>0}).sort(function(a,b){return b.n-a.n});
+ let payments=[],i=0,j=0;
+ while(i<debt.length&&j<credit.length){let n=Math.min(debt[i].n,credit[j].n);if(n>0)payments.push({from:debt[i].id,to:credit[j].id,c:n});debt[i].n-=n;credit[j].n-=n;if(!debt[i].n)i++;if(!credit[j].n)j++}
+ return payments;
+}
+function mainTop(title,home){
+ return '<header class="top">'+(home?'':'<button class="iconbtn back" data-a="back" title="Zpět" aria-label="Zpět">‹</button>')+'<h1>'+esc(title)+'</h1><div class="menubox"><button class="iconbtn" data-a="menu" title="Další možnosti" aria-label="Další možnosti">⋯</button>'+(menu?'<div class="menu">'+(home?'<button data-a="import">Importovat</button><button data-a="export">Exportovat</button>':'<button data-a="rename-event">Přejmenovat</button><button data-a="delete-event">Smazat akci</button>')+'</div>':'')+'</div></header>';
+}
+function renderHome(){
+ let h=mainTop("Rozúčtování",true);
+ h+='<section class="stack" id="events">';
+ state.events.forEach(function(e){
+  let count=e.expenses.length;h+='<button class="tile" data-a="open" data-id="'+esc(e.id)+'"><span class="body"><div class="maintext">'+esc(e.name)+'</div><div class="subtext">'+e.people.length+' lidí · '+count+' nákupů</div></span><span class="chevron">›</span></button>'
+ });
+ if(!state.events.length&&!addingEvent)h+='<div class="quiet">Žádné akce</div>';
+ if(addingEvent)h+='<form class="rowcard formrow" id="newEvent"><input class="input" id="eventName" maxlength="90" placeholder="Název akce" aria-label="Název akce" required autofocus><button class="savebtn" type="submit">Uložit</button><button class="cancelbtn" type="button" data-a="cancel-event">×</button></form>';
+ h+='</section><div class="sectionhead"><span></span><button class="addline" data-a="add-event">＋ Nová akce</button></div>';
+ app.innerHTML=h;
+ if(addingEvent)document.getElementById("eventName").focus();
+}
+function renderDetail(){
+ const e=current();if(!e){setEvent(null);return}
+ let h=mainTop(e.name,false);
+ h+='<div class="sectionhead"><h2>Lidé</h2><button class="iconbtn plus" data-a="add-person" title="Přidat člověka" aria-label="Přidat člověka">＋</button></div><section class="rowcard">';
+ e.people.forEach(function(p){
+  if(editingPerson===p.id){
+   h+='<form class="formrow" data-person-form="'+esc(p.id)+'"><input class="input" name="name" aria-label="Jméno" maxlength="80" required value="'+esc(p.name)+'"><button class="savebtn" type="submit">✓</button><button class="cancelbtn" type="button" data-a="cancel-person">×</button></form>';return;
+  }
+  h+='<div class="person"><button class="name" data-a="edit-person" data-id="'+esc(p.id)+'" title="Upravit jméno">'+esc(p.name)+'</button><button class="iconbtn del" data-a="remove-person" data-id="'+esc(p.id)+'" title="Odebrat člověka" aria-label="Odebrat '+esc(p.name)+'">×</button></div>';
+ });
+ if(addingPerson)h+='<form class="formrow" id="newPerson"><input class="input" id="personName" name="name" maxlength="80" placeholder="Jméno" aria-label="Jméno" required><button class="savebtn" type="submit">✓</button><button class="cancelbtn" type="button" data-a="cancel-person">×</button></form>';
+ if(!e.people.length&&!addingPerson)h+='<div class="quiet" style="padding:16px">Žádní lidé</div>';
+ h+='</section>';
+ h+='<div class="sectionhead"><h2>Nákupy</h2><button class="iconbtn plus" data-a="add-expense" title="Přidat nákup" aria-label="Přidat nákup">＋</button></div><section class="stack">';
+ e.expenses.forEach(function(ex){
+  h+='<button class="bill" data-a="edit-expense" data-id="'+esc(ex.id)+'"><span class="body"><div class="maintext">'+esc(ex.name)+'</div><div class="subtext">Platí '+esc(itemName(e,ex.payerId))+'</div></span><span class="amount">'+money(ex.amount)+'</span></button>';
+ });
+ if(!e.expenses.length)h+='<div class="quiet">Žádné nákupy</div>';
+ h+='</section>';
+ let sum=e.expenses.reduce(function(n,x){return n+(Number(x.amount)||0)},0);
+ h+='<div class="totalline"><span>Celkem</span><strong>'+money(sum)+'</strong></div>';
+ h+='<div class="sectionhead"><h2>Kdo komu zaplatí</h2><button class="sharebtn" data-a="share" aria-label="Sdílet vyrovnání">↗ Sdílet</button></div><section class="stack">';
+ let payments=settlement(e);
+ payments.forEach(function(x){
+  h+='<div class="rowcard settle"><div class="payto"><strong>'+esc(itemName(e,x.from))+'</strong><small>→ '+esc(itemName(e,x.to))+'</small></div><strong class="amount">'+money(x.c)+'</strong></div>';
+ });
+ if(!payments.length)h+='<div class="quiet">'+(e.expenses.length?'Všechno je vyrovnáno':'Zatím žádné platby')+'</div>';
+ h+='</section>';
+ app.innerHTML=h;
+ let field=document.getElementById("personName")||app.querySelector('[data-person-form] input');if(field)field.focus();
+}
+function render(){if(eventId&&!current())eventId=null;if(!eventId)renderHome();else renderDetail()}
+function editorParticipants(){
+ const e=current();let container=editor.querySelector("#participantList");if(!container)return;
+ container.innerHTML=e.people.map(function(p){
+  let w=Math.max(0,Math.floor(Number(draft.weights[p.id])||0));
+  return '<div class="participant'+(w===0?' inactive':'')+'"><span class="pname">'+esc(p.name)+'</span><button type="button" class="step" data-step="-1" data-id="'+esc(p.id)+'" aria-label="Menší podíl – '+esc(p.name)+'">−</button><input class="weight" type="text" inputmode="numeric" maxlength="3" data-weight="'+esc(p.id)+'" aria-label="Podíl '+esc(p.name)+'" value="'+w+'"><button type="button" class="step" data-step="1" data-id="'+esc(p.id)+'" aria-label="Větší podíl – '+esc(p.name)+'">+</button></div>';
+ }).join("");
+}
+function openExpense(id){
+ const e=current();if(!e||!e.people.length){alert("Nejdřív přidej člověka.");return}
+ const old=e.expenses.find(function(x){return x.id===id});
+ draft=old?{id:old.id,name:old.name,amount:String(old.amount/100).replace(".",","),payerId:old.payerId,weights:Object.assign({},old.weights)}:{id:uid(),name:"",amount:"",payerId:e.people[0].id,weights:Object.fromEntries(e.people.map(function(p){return [p.id,1]}))};
+ editor.innerHTML='<form class="dialogin" id="expenseForm"><div class="dialoghead"><h2>'+(old?'Upravit nákup':'Nový nákup')+'</h2><button type="button" class="iconbtn" data-e="close" title="Zavřít" aria-label="Zavřít">×</button></div><div class="field"><label for="billName">Název</label><input class="input" id="billName" maxlength="100" placeholder="Ubytování, jídlo…" required value="'+esc(draft.name)+'"></div><div class="twocol"><div class="field"><label for="billAmount">Cena (Kč)</label><input class="input" id="billAmount" type="text" inputmode="decimal" placeholder="0,00" required value="'+esc(draft.amount)+'"></div><div class="field"><label for="billPayer">Zaplatil/a</label><select class="input" id="billPayer">'+e.people.map(function(p){return '<option value="'+esc(p.id)+'"'+(p.id===draft.payerId?' selected':'')+'>'+esc(p.name)+'</option>'}).join("")+'</select></div></div><div class="sectionhead"><h2>Podíly</h2></div><div id="participantList"></div><div class="dialogfoot">'+(old?'<button type="button" class="danger left" data-e="delete">Smazat</button>':'<span class="left"></span>')+'<button type="button" class="cancelbtn" data-e="close">Zrušit</button><button type="submit" class="savebtn">Uložit</button></div></form>';
+ editorParticipants();
+ editor.showModal();document.getElementById("billName").focus();
+}
+function closeEditor(){editor.close();draft=null}
+async function share(){
+ const e=current();if(!e)return;let payments=settlement(e);
+ let lines=[e.name,"Celkem: "+money(e.expenses.reduce(function(n,x){return n+x.amount},0)),""];
+ if(payments.length)payments.forEach(function(x){lines.push(itemName(e,x.from)+" → "+itemName(e,x.to)+": "+money(x.c))});
+ else lines.push("Všechno je vyrovnáno.");
+ let s=lines.join("\n");
+ if(navigator.share){try{await navigator.share({title:e.name,text:s});return}catch(err){if(err&&err.name==="AbortError")return}}
+ try{await navigator.clipboard.writeText(s);alert("Vyrovnání zkopírováno.")}catch(err){const ta=document.createElement("textarea");ta.value=s;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");alert("Vyrovnání zkopírováno.")}catch(e){alert(s)}ta.remove()}
+}
+function download(){
+ const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="rozuctovani-zaloha.json";a.click();setTimeout(function(){URL.revokeObjectURL(url)},500);
+}
+function validImport(v){
+ if(!v||!Array.isArray(v.events)||v.events.length>2000)return false;
+ const ids=new Set();
+ for(const e of v.events){
+  if(!e||typeof e.id!=="string"||typeof e.name!=="string"||!Array.isArray(e.people)||!Array.isArray(e.expenses)||e.people.length>300||e.expenses.length>20000||ids.has(e.id))return false;
+  ids.add(e.id);let people=new Set();
+  for(const p of e.people){if(!p||typeof p.id!=="string"||typeof p.name!=="string"||people.has(p.id))return false;people.add(p.id)}
+  for(const x of e.expenses){if(!x||typeof x.id!=="string"||typeof x.name!=="string"||!Number.isSafeInteger(x.amount)||x.amount<0||!people.has(x.payerId)||!x.weights||typeof x.weights!=="object")return false;for(const [id,w] of Object.entries(x.weights))if(!people.has(id)||!Number.isInteger(w)||w<0||w>999)return false}
+ }
+ return true;
+}
+app.addEventListener("click",async function(ev){
+ const btn=ev.target.closest("[data-a]");if(!btn)return;const a=btn.dataset.a,id=btn.dataset.id;let e=current();
+ if(a==="menu"){menu=!menu;render();return}
+ if(a==="open"){setEvent(id);return}
+ if(a==="back"){setEvent(null);return}
+ if(a==="add-event"){addingEvent=true;render();return}
+ if(a==="cancel-event"){addingEvent=false;render();return}
+ if(a==="add-person"){addingPerson=true;editingPerson=null;render();return}
+ if(a==="cancel-person"){addingPerson=false;editingPerson=null;render();return}
+ if(a==="edit-person"){editingPerson=id;addingPerson=false;render();return}
+ if(a==="remove-person"){
+  const p=e.people.find(function(p){return p.id===id});if(!p)return;
+  if(e.expenses.some(function(x){return x.payerId===id||Number(x.weights[id])>0})){alert("Nejdřív uprav nákupy, ve kterých je tato osoba.");return}
+  if(!confirm("Odebrat "+p.name+"?"))return;
+  e.people=e.people.filter(function(p){return p.id!==id});e.expenses.forEach(function(x){delete x.weights[id]});save();render();return
+ }
+ if(a==="add-expense"){openExpense(null);return}
+ if(a==="edit-expense"){openExpense(id);return}
+ if(a==="share"){await share();return}
+ if(a==="rename-event"){menu=false;let n=prompt("Název akce",e.name);if(n&&n.trim()){e.name=n.trim().slice(0,90);save()}render();return}
+ if(a==="delete-event"){menu=false;if(confirm("Smazat akci „"+e.name+"“ včetně nákupů?")){state.events=state.events.filter(function(x){return x.id!==e.id});save();setEvent(null)}else render();return}
+ if(a==="export"){menu=false;download();render();return}
+ if(a==="import"){menu=false;render();importFile.click();return}
+});
+app.addEventListener("submit",function(ev){
+ let f=ev.target;
+ if(f.id==="newEvent"){
+  ev.preventDefault();let v=document.getElementById("eventName").value.trim();if(!v)return;
+  let e={id:uid(),name:v.slice(0,90),people:[],expenses:[]};state.events.unshift(e);save();setEvent(e.id);return
+ }
+ if(f.id==="newPerson"||f.matches("[data-person-form]")){
+  ev.preventDefault();let e=current(),v=f.querySelector('input[name="name"]').value.trim();if(!v)return;
+  let existing=e.people.some(function(p){return p.name.toLocaleLowerCase("cs")===v.toLocaleLowerCase("cs")&&p.id!==f.dataset.personForm});
+  if(existing){alert("Toto jméno už v akci je.");return}
+  if(f.id==="newPerson"){e.people.push({id:uid(),name:v.slice(0,80)});addingPerson=true}else{e.people.find(function(p){return p.id===f.dataset.personForm}).name=v.slice(0,80);editingPerson=null}
+  save();render();return
+ }
+});
+editor.addEventListener("click",function(ev){
+ const btn=ev.target.closest("[data-e],[data-step]");if(!btn)return;
+ if(btn.dataset.e==="close"){closeEditor();return}
+ if(btn.dataset.e==="delete"){let e=current();if(confirm("Smazat nákup?")){e.expenses=e.expenses.filter(function(x){return x.id!==draft.id});save();closeEditor();render()}return}
+ if(btn.dataset.step){let id=btn.dataset.id;let n=Math.max(0,Math.min(999,(Number(draft.weights[id])||0)+Number(btn.dataset.step)));draft.weights[id]=n;editorParticipants()}
+});
+editor.addEventListener("change",function(ev){let el=ev.target;if(el.matches("[data-weight]")){let n=Number(el.value);if(!Number.isInteger(n)||n<0||n>999)n=0;draft.weights[el.dataset.weight]=n;editorParticipants()}});
+editor.addEventListener("submit",function(ev){
+ if(ev.target.id!=="expenseForm")return;ev.preventDefault();
+ const e=current(),name=document.getElementById("billName").value.trim(),amount=parseMoney(document.getElementById("billAmount").value),payerId=document.getElementById("billPayer").value;
+ if(!name){alert("Zadej název.");return}
+ if(amount===null){alert("Zadej platnou částku v Kč, maximálně na dvě desetinná místa.");return}
+ if(!e.people.some(function(p){return p.id===payerId})){alert("Vyber plátce.");return}
+ if(!e.people.some(function(p){return Number(draft.weights[p.id])>0})){alert("Aspoň jeden člověk musí mít nenulový podíl.");return}
+ const ex={id:draft.id,name:name.slice(0,100),amount:amount,payerId:payerId,weights:Object.assign({},draft.weights)};
+ let index=e.expenses.findIndex(function(x){return x.id===ex.id});
+ if(index<0)e.expenses.push(ex);else e.expenses[index]=ex;
+ save();closeEditor();render();
+});
+editor.addEventListener("close",function(){draft=null});
+importFile.addEventListener("change",async function(){
+ const file=importFile.files&&importFile.files[0];importFile.value="";if(!file)return;
+ try{
+  if(file.size>5e6)throw Error("Soubor je příliš velký.");
+  const obj=JSON.parse(await file.text());if(!validImport(obj))throw Error("Neplatný formát zálohy.");
+  if(!confirm("Nahradit všechny současné akce zálohou?"))return;
+  state={events:obj.events};save();setEvent(null)
+ }catch(err){alert(err.message||"Zálohu nelze načíst.")}
+});
+window.addEventListener("storage",function(ev){if(ev.key===KEY){try{let v=JSON.parse(ev.newValue);if(v&&Array.isArray(v.events)){state=v;render()}}catch(e){}}});
+render();
+if("serviceWorker" in navigator)window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js").catch(function(){})});
+})();
+</script>
+</body>
+</html>
