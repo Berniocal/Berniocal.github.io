@@ -34,7 +34,7 @@ dialog{border:0;border-radius:21px;padding:0;width:min(500px,calc(100vw - 24px))
 (function(){
 const KEY="bernio-rozuctovani-v1", app=document.getElementById("app"), editor=document.getElementById("editor");
 const importFile=document.getElementById("importFile");
-let state={events:[]},eventId=null,addingEvent=false,addingPerson=false,editingPerson=null,draft=null,menu=false;
+let state={events:[]},eventId=null,addingEvent=false,addingPerson=false,editingPerson=null,draft=null,transferDraft=null,menu=false;
 function uid(){return typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():"id"+Date.now().toString(36)+Math.random().toString(36).slice(2)}
 function esc(value){return String(value==null?"":value).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function money(cents){return (cents/100).toLocaleString("cs-CZ",{minimumFractionDigits:2,maximumFractionDigits:2})+" Kč"}
@@ -54,6 +54,7 @@ function splitExpense(ex,e){
  for(let i=0;i<ex.amount-allocated;i++)rows[i].c++;
  return rows;
 }
+function transfers(e){return Array.isArray(e.transfers)?e.transfers:[]}
 function settlement(e){
  let bal=Object.fromEntries(e.people.map(function(p){return [p.id,0]}));
  e.expenses.forEach(function(ex){
@@ -62,6 +63,11 @@ function settlement(e){
   if(!shares.length)return;
   bal[ex.payerId]+=ex.amount;
   shares.forEach(function(x){bal[x.id]-=x.c});
+ });
+ transfers(e).forEach(function(t){
+  if(!(t.from in bal)||!(t.to in bal)||t.from===t.to)return;
+  bal[t.from]+=t.amount;
+  bal[t.to]-=t.amount;
  });
  let debt=e.people.map(function(p){return {id:p.id,n:-bal[p.id]}}).filter(function(x){return x.n>0}).sort(function(a,b){return b.n-a.n});
  let credit=e.people.map(function(p){return {id:p.id,n:bal[p.id]}}).filter(function(x){return x.n>0}).sort(function(a,b){return b.n-a.n});
@@ -105,6 +111,12 @@ function renderDetail(){
  h+='</section>';
  let sum=e.expenses.reduce(function(n,x){return n+(Number(x.amount)||0)},0);
  h+='<div class="totalline"><span>Celkem</span><strong>'+money(sum)+'</strong></div>';
+ h+='<div class="sectionhead"><h2>Už zaplaceno</h2><button class="iconbtn plus" data-a="add-transfer" title="Přidat platbu" aria-label="Přidat platbu">＋</button></div><section class="stack">';
+ transfers(e).forEach(function(t){
+  h+='<button class="bill" data-a="edit-transfer" data-id="'+esc(t.id)+'"><span class="body"><div class="maintext">'+esc(itemName(e,t.from))+' → '+esc(itemName(e,t.to))+'</div><div class="subtext">Zaplaceno</div></span><span class="amount">'+money(t.amount)+'</span></button>';
+ });
+ if(!transfers(e).length)h+='<div class="quiet">Zatím žádné platby</div>';
+ h+='</section>';
  h+='<div class="sectionhead"><h2>Kdo komu zaplatí</h2><button class="sharebtn" data-a="share" aria-label="Sdílet vyrovnání">↗ Sdílet</button></div><section class="stack">';
  let payments=settlement(e);
  payments.forEach(function(x){
@@ -131,7 +143,18 @@ function openExpense(id){
  editorParticipants();
  editor.showModal();document.getElementById("billName").focus();
 }
-function closeEditor(){editor.close();draft=null}
+function openTransfer(id,from,to,amount){
+ const e=current();if(!e||e.people.length<2){alert("Nejdřív přidej alespoň dva lidi.");return}
+ const old=transfers(e).find(function(t){return t.id===id});
+ const chosenFrom=old?old.from:from||e.people[0].id;
+ const chosenTo=old?old.to:to||e.people.find(function(p){return p.id!==chosenFrom}).id;
+ const val=old?String(old.amount/100).replace(".",","):amount?String(amount/100).replace(".",","):"";
+ transferDraft={id:old?old.id:uid()};
+ function options(selected){return e.people.map(function(p){return '<option value="'+esc(p.id)+'"'+(p.id===selected?' selected':'')+'>'+esc(p.name)+'</option>'}).join("")}
+ editor.innerHTML='<form class="dialogin" id="transferForm"><div class="dialoghead"><h2>'+(old?'Upravit platbu':'Zaplacená částka')+'</h2><button type="button" class="iconbtn" data-e="close" title="Zavřít" aria-label="Zavřít">×</button></div><div class="field"><label for="transferFrom">Kdo zaplatil</label><select class="input" id="transferFrom">'+options(chosenFrom)+'</select></div><div class="field"><label for="transferTo">Komu</label><select class="input" id="transferTo">'+options(chosenTo)+'</select></div><div class="field"><label for="transferAmount">Částka (Kč)</label><input class="input" id="transferAmount" type="text" inputmode="decimal" placeholder="0,00" required value="'+esc(val)+'"></div><div class="dialogfoot">'+(old?'<button type="button" class="danger left" data-e="delete-transfer">Smazat</button>':'<span class="left"></span>')+'<button type="button" class="cancelbtn" data-e="close">Zrušit</button><button type="submit" class="savebtn">Uložit</button></div></form>';
+ editor.showModal();document.getElementById("transferAmount").focus();
+}
+function closeEditor(){editor.close();draft=null;transferDraft=null}
 async function share(){
  const e=current();if(!e)return;let payments=settlement(e);
  let lines=[e.name,"Celkem: "+money(e.expenses.reduce(function(n,x){return n+x.amount},0)),""];
@@ -153,6 +176,7 @@ function validImport(v){
   ids.add(e.id);let people=new Set();
   for(const p of e.people){if(!p||typeof p.id!=="string"||typeof p.name!=="string"||people.has(p.id))return false;people.add(p.id)}
   for(const x of e.expenses){if(!x||typeof x.id!=="string"||typeof x.name!=="string"||!Number.isSafeInteger(x.amount)||x.amount<0||!people.has(x.payerId)||!x.weights||typeof x.weights!=="object")return false;for(const [id,w] of Object.entries(x.weights))if(!people.has(id)||!Number.isInteger(w)||w<0||w>999)return false}
+  if(e.transfers!==undefined){if(!Array.isArray(e.transfers)||e.transfers.length>20000)return false;const transferIds=new Set();for(const t of e.transfers){if(!t||typeof t.id!=="string"||transferIds.has(t.id)||!people.has(t.from)||!people.has(t.to)||t.from===t.to||!Number.isSafeInteger(t.amount)||t.amount<=0)return false;transferIds.add(t.id)}}
  }
  return true;
 }
@@ -168,15 +192,17 @@ app.addEventListener("click",async function(ev){
  if(a==="edit-person"){editingPerson=id;addingPerson=false;render();return}
  if(a==="remove-person"){
   const p=e.people.find(function(p){return p.id===id});if(!p)return;
-  if(e.expenses.some(function(x){return x.payerId===id||Number(x.weights[id])>0})){alert("Nejdřív uprav nákupy, ve kterých je tato osoba.");return}
+  if(e.expenses.some(function(x){return x.payerId===id||Number(x.weights[id])>0})||transfers(e).some(function(t){return t.from===id||t.to===id})){alert("Nejdřív uprav nákupy a platby, ve kterých je tato osoba.");return}
   if(!confirm("Odebrat "+p.name+"?"))return;
   e.people=e.people.filter(function(p){return p.id!==id});e.expenses.forEach(function(x){delete x.weights[id]});save();render();return
  }
  if(a==="add-expense"){openExpense(null);return}
  if(a==="edit-expense"){openExpense(id);return}
+ if(a==="add-transfer"){openTransfer(null);return}
+ if(a==="edit-transfer"){openTransfer(id);return}
  if(a==="share"){await share();return}
  if(a==="rename-event"){menu=false;let n=prompt("Název akce",e.name);if(n&&n.trim()){e.name=n.trim().slice(0,90);save()}render();return}
- if(a==="delete-event"){menu=false;if(confirm("Smazat akci „"+e.name+"“ včetně nákupů?")){state.events=state.events.filter(function(x){return x.id!==e.id});save();setEvent(null)}else render();return}
+ if(a==="delete-event"){menu=false;if(confirm("Smazat akci „"+e.name+"“ včetně nákupů a plateb?")){state.events=state.events.filter(function(x){return x.id!==e.id});save();setEvent(null)}else render();return}
  if(a==="export"){menu=false;download();render();return}
  if(a==="import"){menu=false;render();importFile.click();return}
 });
@@ -184,7 +210,7 @@ app.addEventListener("submit",function(ev){
  let f=ev.target;
  if(f.id==="newEvent"){
   ev.preventDefault();let v=document.getElementById("eventName").value.trim();if(!v)return;
-  let e={id:uid(),name:v.slice(0,90),people:[],expenses:[]};state.events.unshift(e);save();setEvent(e.id);return
+  let e={id:uid(),name:v.slice(0,90),people:[],expenses:[],transfers:[]};state.events.unshift(e);save();setEvent(e.id);return
  }
  if(f.id==="newPerson"||f.matches("[data-person-form]")){
   ev.preventDefault();let e=current(),v=f.querySelector('input[name="name"]').value.trim();if(!v)return;
@@ -198,10 +224,23 @@ editor.addEventListener("click",function(ev){
  const btn=ev.target.closest("[data-e],[data-step]");if(!btn)return;
  if(btn.dataset.e==="close"){closeEditor();return}
  if(btn.dataset.e==="delete"){let e=current();if(confirm("Smazat nákup?")){e.expenses=e.expenses.filter(function(x){return x.id!==draft.id});save();closeEditor();render()}return}
+ if(btn.dataset.e==="delete-transfer"){let e=current();if(transferDraft&&confirm("Smazat zapsanou platbu?")){e.transfers=transfers(e).filter(function(x){return x.id!==transferDraft.id});save();closeEditor();render()}return}
  if(btn.dataset.step){let id=btn.dataset.id;let n=Math.max(0,Math.min(999,(Number(draft.weights[id])||0)+Number(btn.dataset.step)));draft.weights[id]=n;editorParticipants()}
 });
 editor.addEventListener("change",function(ev){let el=ev.target;if(el.matches("[data-weight]")){let n=Number(el.value);if(!Number.isInteger(n)||n<0||n>999)n=0;draft.weights[el.dataset.weight]=n;editorParticipants()}});
 editor.addEventListener("submit",function(ev){
+ if(ev.target.id==="transferForm"){
+  ev.preventDefault();
+  let e=current(),from=document.getElementById("transferFrom").value,to=document.getElementById("transferTo").value,amount=parseMoney(document.getElementById("transferAmount").value);
+  if(from===to){alert("Vyber dvě různé osoby.");return}
+  if(!e.people.some(function(p){return p.id===from})||!e.people.some(function(p){return p.id===to})){alert("Vyber osoby ze seznamu.");return}
+  if(amount===null||amount<=0){alert("Zadej platnou částku větší než 0 Kč.");return}
+  const t={id:transferDraft.id,from:from,to:to,amount:amount};
+  if(!Array.isArray(e.transfers))e.transfers=[];
+  const i=e.transfers.findIndex(function(x){return x.id===t.id});
+  if(i<0)e.transfers.push(t);else e.transfers[i]=t;
+  save();closeEditor();render();return;
+ }
  if(ev.target.id!=="expenseForm")return;ev.preventDefault();
  const e=current(),name=document.getElementById("billName").value.trim(),amount=parseMoney(document.getElementById("billAmount").value),payerId=document.getElementById("billPayer").value;
  if(!name){alert("Zadej název.");return}
@@ -213,7 +252,7 @@ editor.addEventListener("submit",function(ev){
  if(index<0)e.expenses.push(ex);else e.expenses[index]=ex;
  save();closeEditor();render();
 });
-editor.addEventListener("close",function(){draft=null});
+editor.addEventListener("close",function(){draft=null;transferDraft=null});
 importFile.addEventListener("change",async function(){
  const file=importFile.files&&importFile.files[0];importFile.value="";if(!file)return;
  try{
