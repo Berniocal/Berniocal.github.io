@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vektory v souřadné soustavě</title>
+  <style>
+    :root{
+      --bg:#eef2f7;
+      --card:#ffffff;
+      --text:#172033;
+      --muted:#667085;
+      --line:#d9e1ec;
+      --primary:#2563eb;
+      --primary-dark:#1d4ed8;
+      --danger:#dc2626;
+      --result:#111827;
+      --radius:16px;
+      --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    button,input,select{font:inherit}
+    .app{max-width:1500px;margin:0 auto;padding:18px}
+    .topbar{
+      display:flex;gap:14px;align-items:flex-start;justify-content:space-between;
+      margin-bottom:14px;flex-wrap:wrap;
+    }
+    h1{font-size:clamp(22px,2.5vw,32px);margin:0 0 4px}
+    .subtitle{margin:0;color:var(--muted);font-size:14px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    button{
+      border:1px solid var(--line);background:#fff;color:var(--text);border-radius:10px;
+      padding:9px 12px;cursor:pointer;font-weight:700;transition:.15s;
+    }
+    button:hover{transform:translateY(-1px);box-shadow:0 5px 12px rgba(15,23,42,.08)}
+    button.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+    button.primary.active{background:#f59e0b;border-color:#f59e0b;color:#1f2937}
+    button.danger{color:var(--danger)}
+    button.small{padding:6px 9px;font-size:13px}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:14px;align-items:start}
+    .card{background:var(--card);border:1px solid #e5eaf1;border-radius:var(--radius);box-shadow:var(--shadow)}
+    .canvas-card{overflow:hidden}
+    .under-plot-solutions{padding:12px;border-top:1px solid var(--line)}
+    .under-plot-solutions details.solution{margin-top:0;margin-bottom:10px}
+    .under-plot-solutions #chainPlot{max-height:550px}
+    .canvas-toolbar{
+      padding:10px 12px;border-bottom:1px solid var(--line);display:flex;gap:14px;flex-wrap:wrap;align-items:center;
+    }
+    .toggle{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:650}
+    .toggle input{width:17px;height:17px;accent-color:var(--primary)}
+    .rangebox{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:650}
+    .rangebox input{width:120px}
+    .svg-wrap{position:relative;background:#fff;touch-action:none;user-select:none}
+    /* Neaplikovat na SVG vytvářená MathJaxem – jinak vzorce vyrostou přes celou stránku. */
+    #plot, #chainPlot {display:block;width:100%;height:auto;aspect-ratio:3/2;background:#fff;cursor:crosshair}
+    .steps mjx-container[jax="SVG"] {font-size:105% !important; max-width:100%}
+    .steps .eqline {font-size:15px; line-height:1.6; overflow-x:auto; overflow-y:hidden}
+    .steps .eqline mjx-container {margin:0.35em 0 !important}
+    .under-plot-solutions {min-width:0}
+    .hint{
+      position:absolute;left:12px;bottom:12px;background:rgba(17,24,39,.86);color:#fff;
+      padding:7px 10px;border-radius:9px;font-size:12px;pointer-events:none;
+    }
+    .side{display:flex;flex-direction:column;gap:14px}
+    .section{padding:14px}
+    .section h2{font-size:17px;margin:0 0 10px}
+    .section p{margin:0;color:var(--muted);font-size:13px}
+    .result-box{
+      border:1px solid var(--line);border-radius:12px;padding:12px;background:#f8fafc;
+      display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:10px;
+    }
+    .metric{min-width:0}
+    .metric .k{font-size:12px;color:var(--muted)}
+    .metric .v{font-size:19px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .formula{
+      margin-top:10px;padding:10px;border-radius:12px;border:1px solid var(--line);background:#fff;
+      font-size:14px;overflow:auto;line-height:1.65;
+    }
+    details.solution{margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:10px;background:white}
+    details.solution summary{cursor:pointer;font-weight:800;padding:5px}
+    #chainPlot{width:100%;aspect-ratio:3/2;border:1px solid #e2e8f0;border-radius:9px;margin-top:10px}
+    /* MathJax si velikost vnitřních SVG určuje sám. */
+    mjx-container svg {aspect-ratio:auto !important; max-width:none; background:transparent; cursor:default}
+    .eqline{margin:9px 0;overflow-x:auto}
+    .steps{font-size:14px;line-height:1.8;overflow-x:auto}.steps p{margin:9px 0;color:var(--text)}
+    .vectors{display:flex;flex-direction:column;gap:10px;max-height:520px;overflow:auto;padding-right:2px}
+    .vector-row{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}
+    .vector-head{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+    .swatch{width:14px;height:14px;border-radius:50%;flex:0 0 auto;border:1px solid rgba(0,0,0,.12)}
+    .symbol-preview{font-weight:800;min-width:28px}
+    .vector-head input.label{flex:1;min-width:0}
+    .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+    .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+    .field input,.vector-head input{
+      width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:#fff;color:var(--text)
+    }
+    .field input:focus,.vector-head input:focus{outline:2px solid rgba(37,99,235,.18);border-color:var(--primary)}
+    .row-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:8px}
+    .empty{padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px;font-size:13px}
+    .copy-note{font-size:12px;color:var(--muted);margin-top:8px!important;line-height:1.35}
+    .toast{
+      position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:#111827;color:#fff;
+      padding:10px 14px;border-radius:10px;opacity:0;pointer-events:none;transition:.2s;z-index:20;font-size:14px;
+    }
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+    @media (max-width:1050px){.layout{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.vector-section{grid-column:1/-1}}
+    @media (max-width:720px){
+      .app{padding:10px}.side{display:flex}.canvas-toolbar{gap:10px}.grid4{grid-template-columns:1fr 1fr}
+      .actions{width:100%}.actions button{flex:1}.hint{font-size:11px;max-width:80%}
+    }
+  </style>
+  <script>
+    window.MathJax = {
+      tex: {inlineMath: [['\\(','\\)'], ['$', '$']]},
+      svg: {fontCache: 'global'},
+      startup: {typeset: false}
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" onload="window.mathReady=true; renderMath();"></script>
+</head>
+<body>
+<nav aria-label="Navigace" style="padding:10px 18px;font:16px system-ui"><a href="/#analyticka_geometrie">Zpět do matematiky</a></nav>
+  <div class="app">
+    <div class="topbar">
+      <div>
+        <h1>Vektory v souřadné soustavě</h1>
+        <p class="subtitle">Nakresli vektory, uprav jejich souřadnice a zobraz výslednici i početní postup.</p>
+      </div>
+      <div class="actions">
+        <button id="drawBtn" class="primary">✚ Kreslit vektor</button>
+        <button id="undoBtn">↶ Zpět</button>
+        <button id="pngBtn">⬇ PNG</button>
+        <button id="wordBtn">▣ Kopírovat do Wordu</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="card canvas-card">
+        <div class="canvas-toolbar">
+          <label class="toggle"><input id="showGrid" type="checkbox" checked> Mřížka</label>
+          <label class="toggle"><input id="showAxisX" type="checkbox" checked> Osa x</label>
+          <label class="toggle"><input id="showAxisY" type="checkbox" checked> Osa y</label>
+          <label class="toggle"><input id="snap" type="checkbox" checked> Přichytávat k mřížce</label>
+          <label class="toggle"><input id="showResult" type="checkbox" checked> Výsledný vektor</label>
+          <label class="toggle"><input id="showComponents" type="checkbox"> Pomocné složky výslednice</label>
+          <div class="rangebox">Rozsah ±<input id="range" type="range" min="5" max="20" step="1" value="10"><span id="rangeVal">10</span></div>
+        </div>
+        <div class="svg-wrap">
+          <svg id="plot" viewBox="0 0 900 600" aria-label="Souřadná soustava s vektory"></svg>
+          <div class="hint" id="hint">Klikni na „Kreslit vektor“ a táhni od počátku ke konci vektoru.</div>
+        </div>
+        <div class="under-plot-solutions">
+          <details class="solution"><summary>Početní řešení – krok za krokem</summary>
+            <div class="formula steps" id="formula"></div>
+          </details>
+          <details class="solution" id="graphicDetails"><summary>Grafické řešení – vektory za sebou</summary>
+            <p>Každý další vektor je posunut tak, aby začínal na konci předchozího. Výslednice vede od začátku prvního ke konci posledního.</p>
+            <svg id="chainPlot" viewBox="0 0 900 600" aria-label="Grafické skládání vektorů"></svg>
+          </details>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="card section">
+          <h2>Výsledný vektor</h2>
+          <label class="toggle"><input id="angle360" type="checkbox" checked> Úhel počítat od kladné osy x (0–360°)</label>
+          <div class="result-box">
+            <div class="metric"><div class="k">vₓ</div><div class="v" id="rx">0</div></div>
+            <div class="metric"><div class="k">vᵧ</div><div class="v" id="ry">0</div></div>
+            <div class="metric"><div class="k">Velikost v</div><div class="v" id="rmag">0</div></div>
+            <div class="metric"><div class="k">α k ose x</div><div class="v" id="rang">—</div></div>
+          </div>
+        </div>
+
+        <div class="card section">
+          <h2>Export postupu</h2>
+          <p>Tlačítko <b>Kopírovat do Wordu</b> vloží do schránky postup s editovatelnými matematickými výrazy.</p>
+          <p class="copy-note">Nejlépe funguje v desktopovém Microsoft Wordu. Pokud Word nabídne způsob vložení, zvol „Zachovat formátování zdroje“.</p>
+        </div>
+
+        <div class="card section vector-section">
+          <h2>Vektory</h2>
+          <div id="vectors" class="vectors"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const svg = document.getElementById('plot');
+  const NS = 'http://www.w3.org/2000/svg';
+  const colors = ['#2563eb','#dc2626','#16a34a','#9333ea','#ea580c','#0891b2','#db2777','#65a30d'];
+  let vectors = [];
+  let history = [];
+  let drawing = false;
+  let dragMode = null; // {type:'new'|'start'|'end'|'move', id, startPt, original}
+  let selectedId = null;
+  let tempVector = null;
+  let nextId = 1;
+  let effectiveRange = 10;
+  let labels = {};
+
+  const els = {
+    drawBtn: document.getElementById('drawBtn'), undoBtn: document.getElementById('undoBtn'),
+    showGrid: document.getElementById('showGrid'), showAxisX: document.getElementById('showAxisX'), showAxisY: document.getElementById('showAxisY'), snap: document.getElementById('snap'),
+    showResult: document.getElementById('showResult'), showComponents: document.getElementById('showComponents'),
+    range: document.getElementById('range'), rangeVal: document.getElementById('rangeVal'),
+    vectors: document.getElementById('vectors'), angle360: document.getElementById('angle360'),
+    rx: document.getElementById('rx'), ry: document.getElementById('ry'), rmag: document.getElementById('rmag'), rang: document.getElementById('rang'),
+    formula: document.getElementById('formula'), chainPlot: document.getElementById('chainPlot'), hint: document.getElementById('hint'), toast: document.getElementById('toast')
+  };
+
+  function fmt(n, d=2){
+    if (!Number.isFinite(n)) return '—';
+    const v = Math.abs(n) < 1e-10 ? 0 : n;
+    return new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:d}).format(v);
+  }
+  function num(n){ return Number.parseFloat(n) || 0; }
+  function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function showToast(text){ els.toast.textContent=text; els.toast.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>els.toast.classList.remove('show'),2200); }
+
+  function snapshot(){
+    history.push(JSON.stringify(vectors));
+    if(history.length>50) history.shift();
+  }
+  function undo(){
+    if(!history.length) return;
+    vectors = JSON.parse(history.pop());
+    selectedId = null;
+    updateAll();
+  }
+
+  function getRange(){ return effectiveRange; }
+  function fitRange(){
+    const r=resultant();
+    let maxX=Math.max(2,Math.abs(r.x)), maxY=Math.max(2,Math.abs(r.y));
+    for(const v of vectors){maxX=Math.max(maxX,Math.abs(v.x1),Math.abs(v.x2));maxY=Math.max(maxY,Math.abs(v.y1),Math.abs(v.y2));}
+    effectiveRange=Math.max(Number(els.range.value), Math.ceil(maxX*1.16),Math.ceil(maxY*1.16*1.5));
+    els.rangeVal.textContent = effectiveRange===Number(els.range.value)?String(effectiveRange):effectiveRange+' (auto)';
+  }
+  function geom(){
+    const xr = getRange();
+    const W=900,H=600;
+    const scale = W/(2*xr);
+    const yr = H/(2*scale);
+    return {W,H,xr,yr,scale,cx:W/2,cy:H/2};
+  }
+  function toScreen(x,y){ const g=geom(); return {x:g.cx+x*g.scale,y:g.cy-y*g.scale}; }
+  function toWorld(px,py){ const g=geom(); return {x:(px-g.cx)/g.scale,y:(g.cy-py)/g.scale}; }
+  function snapPoint(p){ return els.snap.checked ? {x:Math.round(p.x),y:Math.round(p.y)} : {x:Math.round(p.x*10)/10,y:Math.round(p.y*10)/10}; }
+  function eventPoint(e){
+    const pt = svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    return snapPoint(toWorld(p.x,p.y));
+  }
+
+  function create(tag, attrs={}, parent=svg){
+    const el=document.createElementNS(NS,tag);
+    Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));
+    parent.appendChild(el); return el;
+  }
+
+  function markerDefs(){
+    const defs=create('defs');
+    colors.concat(['#111827','#6b7280']).forEach((c,i)=>{
+      const id='arrow-'+i;
+      const m=create('marker',{id,viewBox:'0 0 10 10',refX:'9',refY:'5',markerWidth:'7',markerHeight:'7',orient:'auto-start-reverse'},defs);
+      create('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:c},m);
+    });
+    return defs;
+  }
+  function markerForColor(c){
+    let i=colors.indexOf(c); if(i<0) i=colors.length;
+    return `url(#arrow-${i})`;
+  }
+
+  function drawGrid(){
+    const g=geom();
+    if(els.showGrid.checked){
+      const gg=create('g',{stroke:'#e5e7eb','stroke-width':'1'});
+      for(let x=Math.ceil(-g.xr);x<=Math.floor(g.xr);x++){
+        const a=toScreen(x,-g.yr),b=toScreen(x,g.yr); create('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y},gg);
+      }
+      for(let y=Math.ceil(-g.yr);y<=Math.floor(g.yr);y++){
+        const a=toScreen(-g.xr,y),b=toScreen(g.xr,y); create('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y},gg);
+      }
+    }
+    if(els.showAxisX.checked || els.showAxisY.checked){
+      const ag=create('g',{stroke:'#334155','stroke-width':'2'});
+      const x2=toScreen(g.xr,0), y2=toScreen(0,g.yr);
+      const tg=create('g',{fill:'#475569','font-size':'13','font-family':'Inter, sans-serif'});
+      if(els.showAxisX.checked){
+        const x1=toScreen(-g.xr,0);
+        create('line',{x1:x1.x,y1:x1.y,x2:x2.x-8,y2:x2.y,'marker-end':'url(#arrow-'+(colors.length+1)+')'},ag);
+        for(let x=Math.ceil(-g.xr);x<=Math.floor(g.xr);x++) if(x!==0){
+          const p=toScreen(x,0);create('line',{x1:p.x,y1:p.y-4,x2:p.x,y2:p.y+4,stroke:'#334155','stroke-width':'1.2'},ag);
+          const t=create('text',{x:p.x,y:p.y+18,'text-anchor':'middle'},tg);t.textContent=x;
+        }
+        const tx=create('text',{x:x2.x-16,y:g.cy-10,fill:'#111827','font-size':'15','font-weight':'700'},tg);tx.textContent='x';
+      }
+      if(els.showAxisY.checked){
+        const y1=toScreen(0,-g.yr);
+        create('line',{x1:y1.x,y1:y1.y,x2:y2.x,y2:y2.y+8,'marker-end':'url(#arrow-'+(colors.length+1)+')'},ag);
+        for(let y=Math.ceil(-g.yr);y<=Math.floor(g.yr);y++) if(y!==0){
+          const p=toScreen(0,y);create('line',{x1:p.x-4,y1:p.y,x2:p.x+4,y2:p.y,stroke:'#334155','stroke-width':'1.2'},ag);
+          const t=create('text',{x:p.x-8,y:p.y+4,'text-anchor':'end'},tg);t.textContent=y;
+        }
+        const ty=create('text',{x:g.cx+10,y:y2.y+22,fill:'#111827','font-size':'15','font-weight':'700'},tg);ty.textContent='y';
+      }
+      const o=create('text',{x:g.cx-8,y:g.cy+18,'text-anchor':'end'},tg);o.textContent='0';
+    }
+  }
+
+  function drawVector(v, isTemp=false){
+    const a=toScreen(v.x1,v.y1), b=toScreen(v.x2,v.y2);
+    const grp=create('g',{'data-id':v.id || 'temp'});
+    const line=create('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:v.color,'stroke-width':isTemp?'3':'4','stroke-linecap':'round','marker-end':markerForColor(v.color),opacity:isTemp?.65:1},grp);
+    line.style.cursor='move';
+    if(!isTemp && selectedId===v.id){line.setAttribute('stroke-width','6');}
+    if(!isTemp){
+      line.addEventListener('pointerdown',e=>beginMove(e,v.id));
+      const selected=selectedId===v.id;
+      if(selected){
+        const r=8;
+        const c1=create('circle',{cx:a.x,cy:a.y,r,fill:'#fff',stroke:v.color,'stroke-width':'3'},grp);
+        const c2=create('circle',{cx:b.x,cy:b.y,r,fill:'#fff',stroke:v.color,'stroke-width':'3'},grp);
+        c1.style.cursor='grab';c2.style.cursor='grab';
+        c1.addEventListener('pointerdown',e=>beginHandle(e,v.id,'start'));
+        c2.addEventListener('pointerdown',e=>beginHandle(e,v.id,'end'));
+      }
+      const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+      const off=labels[v.id]||{x:10,y:-12};
+      const label=drawVectorLabel(grp,mx+off.x,my+off.y,v.symbol || 'v',v.desc || '',v.color);
+      label.style.cursor='grab';label.style.pointerEvents='all';
+      label.addEventListener('pointerdown',e=>{
+        e.stopPropagation();e.preventDefault();selectedId=v.id;
+        dragMode={type:'label',id:v.id,initial:{...off},start:eventPixel(e)};pointerCapture(e);
+      });
+    }
+  }
+
+  function drawVectorLabel(parent,x,y,symbol,desc,color){
+    // Celá značka v jednom SVG textu, šipka nad skutečnou šířkou textu.
+    // Unicode kombinující znak (např. "a⃗") chyběl v některých fontech a vykresloval čtverec.
+    const g=create('g',{transform:`translate(${x} ${y})`},parent);
+    const t=create('text',{x:0,y:0,fill:color,'font-size':'18','font-weight':'800',
+      'font-style':'italic','font-family':'Cambria Math, STIX Two Math, Georgia, serif'},g);
+    t.textContent=symbol;
+    let bounds;
+    try { bounds=t.getBBox(); } catch (_) { bounds=null; }
+    const left=bounds && Number.isFinite(bounds.x) ? bounds.x : 0;
+    const width=bounds && bounds.width>0 ? bounds.width : Math.max(13,String(symbol).length*11);
+    const top=bounds && Number.isFinite(bounds.y) ? bounds.y : -17;
+    const lineY=Math.min(-24,top-7);
+    const leftX=left+1, rightX=left+Math.max(12,width)+1;
+    create('line',{x1:leftX,y1:lineY,x2:rightX,y2:lineY,stroke:color,'stroke-width':'1.6'},g);
+    create('path',{d:`M ${rightX} ${lineY} l -5 -3 l 1 3 l -1 3 z`,fill:color},g);
+    if(desc){const d=create('text',{x:0,y:19,fill:'#475569','font-size':'12','font-family':'Inter, sans-serif'},g);d.textContent=desc;}
+    return g;
+  }
+
+  function resultant(){
+    return vectors.reduce((r,v)=>({x:r.x+(v.x2-v.x1),y:r.y+(v.y2-v.y1)}),{x:0,y:0});
+  }
+  function drawResult(){
+    if(!els.showResult.checked || !vectors.length) return;
+    const r=resultant(); const a=toScreen(0,0), b=toScreen(r.x,r.y);
+    if(els.showComponents.checked){
+      const px=toScreen(r.x,0);
+      create('line',{x1:a.x,y1:a.y,x2:px.x,y2:px.y,stroke:'#6b7280','stroke-width':'2','stroke-dasharray':'7 6'});
+      create('line',{x1:px.x,y1:px.y,x2:b.x,y2:b.y,stroke:'#6b7280','stroke-width':'2','stroke-dasharray':'7 6'});
+    }
+    create('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#111827','stroke-width':'5','stroke-linecap':'round','marker-end':'url(#arrow-'+colors.length+')'});
+    drawVectorLabel(svg,(a.x+b.x)/2,(a.y+b.y)/2,'v','výslednice','#111827');
+  }
+
+  function render(){
+    fitRange();
+    svg.innerHTML=''; markerDefs(); drawGrid(); vectors.forEach(v=>drawVector(v)); if(tempVector) drawVector(tempVector,true); drawResult(); drawChain();
+  }
+
+  function drawChain(){
+    const target=els.chainPlot;if(!target)return;
+    target.innerHTML='';
+    const starts=[{x:0,y:0}];
+    vectors.forEach(v=>{const q=starts[starts.length-1];starts.push({x:q.x+v.x2-v.x1,y:q.y+v.y2-v.y1});});
+    const maxX=Math.max(2,...starts.map(p=>Math.abs(p.x)));
+    const maxY=Math.max(2,...starts.map(p=>Math.abs(p.y)));
+    const scale=Math.min(850/(2*maxX*1.25),550/(2*maxY*1.25));
+    const pt=q=>({x:450+q.x*scale,y:300-q.y*scale});
+    const points=starts.map(pt);
+    const defs=create('defs',{},target);
+    colors.concat(['#111827']).forEach((c,i)=>{
+      const m=create('marker',{id:'chain-arrow-'+i,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto'},defs);
+      create('path',{d:'M0 0 L10 5 L0 10 z',fill:c},m);
+    });
+    const segments=vectors.map((v,i)=>({a:points[i],b:points[i+1]}));
+    if(vectors.length) segments.push({a:points[0],b:points[points.length-1]});
+    // Vyber volnou stranu čáry pro popisek – nezakrývá vlastní ani sousední vektory.
+    const placed=[];
+    function clearance(seg,box){
+      let dist=Infinity;
+      for(let i=0;i<=30;i++){
+        const t=i/30, px=seg.a.x+(seg.b.x-seg.a.x)*t,py=seg.a.y+(seg.b.y-seg.a.y)*t;
+        const dx=Math.max(box.l-px,0,px-box.r),dy=Math.max(box.t-py,0,py-box.b);
+        dist=Math.min(dist,Math.hypot(dx,dy));
+      }
+      return dist;
+    }
+    function chooseLabel(a,b,symbol){
+      const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+      const nx=-dy/len,ny=dx/len;
+      const w=Math.max(20,String(symbol).length*12),mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+      let best=null;
+      for(const distance of [35,48,64,82,110]){
+        for(const side of [-1,1]){
+          const x=mid.x+nx*distance*side-w/2;
+          const y=mid.y+ny*distance*side+8;
+          const box={l:x-5,r:x+w+5,t:y-33,b:y+9};
+          let score=distance*.18;
+          for(const seg of segments){const d=clearance(seg,box);score+=Math.max(0,21-d)**2*2.5;}
+          for(const prev of placed){
+            const overlapX=Math.max(0,Math.min(box.r,prev.r)-Math.max(box.l,prev.l));
+            const overlapY=Math.max(0,Math.min(box.b,prev.b)-Math.max(box.t,prev.t));
+            score+=overlapX*overlapY*2;
+          }
+          if(box.l<14||box.r>886||box.t<14||box.b>586) score+=2000;
+          if(best===null||score<best.score)best={score,x,y,box};
+        }
+      }
+      placed.push(best.box);
+      return best;
+    }
+    vectors.forEach((v,i)=>{
+      const a=points[i],b=points[i+1];
+      create('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:v.color,'stroke-width':4,
+        'stroke-linecap':'round','marker-end':`url(#chain-arrow-${colors.indexOf(v.color)})`},target);
+    });
+    if(vectors.length){
+      const a=points[0],b=points[points.length-1];
+      create('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#111827','stroke-width':4,
+        'stroke-dasharray':'10 5','marker-end':`url(#chain-arrow-${colors.length})`},target);
+    }
+    // Popisky se kreslí až nakonec, přes SVG text s vlastní šipkou.
+    vectors.forEach((v,i)=>{
+      const p=chooseLabel(points[i],points[i+1],v.symbol||'a');
+      drawVectorLabel(target,p.x,p.y,v.symbol||'a','',v.color);
+    });
+    if(vectors.length){
+      const p=chooseLabel(points[0],points[points.length-1],'v');
+      drawVectorLabel(target,p.x,p.y,'v','', '#111827');
+    }
+  }
+
+  function nextSymbol(){
+    const letters='abcdefghijklmnpqrstuwxyz';
+    return letters[vectors.length % letters.length] || 'v';
+  }
+
+  function updateVectorPanel(){
+    if(!vectors.length){ els.vectors.innerHTML='<div class="empty">Zatím není nakreslen žádný vektor.</div>'; return; }
+    els.vectors.innerHTML=vectors.map(v=>`
+      <div class="vector-row" data-row="${v.id}">
+        <div class="vector-head">
+          <span class="swatch" style="background:${v.color}"></span>
+          <span class="symbol-preview">→${esc(v.symbol)}</span>
+          <input class="label" data-k="symbol" value="${esc(v.symbol)}" title="Značka vektoru" maxlength="8">
+          <input class="label" data-k="desc" value="${esc(v.desc||'')}" placeholder="popis (např. síla F₁)" title="Volitelný popis">
+        </div>
+        <div class="grid4">
+          <div class="field"><label>x₁</label><input type="number" step="0.1" data-k="x1" value="${v.x1}"></div>
+          <div class="field"><label>y₁</label><input type="number" step="0.1" data-k="y1" value="${v.y1}"></div>
+          <div class="field"><label>x₂</label><input type="number" step="0.1" data-k="x2" value="${v.x2}"></div>
+          <div class="field"><label>y₂</label><input type="number" step="0.1" data-k="y2" value="${v.y2}"></div>
+        </div>
+        <div class="row-actions">
+          <button class="small" data-act="select">Upravit v obrázku</button>
+          <button class="small danger" data-act="delete">Smazat</button>
+        </div>
+      </div>`).join('');
+
+    els.vectors.querySelectorAll('.vector-row').forEach(row=>{
+      const id=Number(row.dataset.row);
+      row.querySelectorAll('input').forEach(inp=>{
+        inp.addEventListener('change',()=>{
+          snapshot();
+          const v=vectors.find(x=>x.id===id); const k=inp.dataset.k;
+          if(k==='symbol'||k==='desc') v[k]=inp.value.trim(); else v[k]=num(inp.value);
+          updateAll(false);
+        });
+      });
+      row.querySelector('[data-act="select"]').addEventListener('click',()=>{selectedId=id; drawing=false; els.drawBtn.classList.remove('active'); render();});
+      row.querySelector('[data-act="delete"]').addEventListener('click',()=>{snapshot(); vectors=vectors.filter(x=>x.id!==id); if(selectedId===id) selectedId=null; updateAll();});
+    });
+  }
+
+  function vecData(v){const x=v.x2-v.x1,y=v.y2-v.y1;return {x,y,m:Math.hypot(x,y),a:Math.atan2(y,x)*180/Math.PI};}
+  function signedSum(values){return values.map((v,i)=>(v<0?(i?' − ':'−'):(i?' + ':''))+fmt(Math.abs(v),2)).join('');}
+  function mathTeX(){
+    if(!vectors.length)return '<p>Nejdříve nakresli alespoň jeden vektor.</p>';
+    const r=resultant(), mag=Math.hypot(r.x,r.y), ang=getAngle(r.x,r.y);
+    const eq=(latex)=>`<div class="eqline">\\(${latex}\\)</div>`;
+    let out='<p><b>1. Rozložíme každý vektor na vodorovnou a svislou složku.</b></p>';
+    out+=eq(String.raw`F_x=F\cos\alpha \qquad F_y=F\sin\alpha`);
+    for(const v of vectors){
+      const d=vecData(v), sym=latexSymbol(v.symbol||'F'), sx=latexComponent(v.symbol||'F','x'), sy=latexComponent(v.symbol||'F','y'), a=fmt((d.a+360)%360,1);
+      const F=fmt(d.m);
+      out+=`<p><b>Vektor ${escapeHTML(v.symbol||'F')}</b>: velikost ${F}, úhel ${a}° ke kladné ose x</p>`;
+      out+=eq(String.raw`${sx}=${sym}\cos\alpha=${F}\cdot\cos(${a}^\circ)=${fmt(d.x)}`);
+      out+=eq(String.raw`${sy}=${sym}\sin\alpha=${F}\cdot\sin(${a}^\circ)=${fmt(d.y)}`);
+    }
+    out+='<p><b>2. Sečteme vodorovné a svislé složky.</b></p>';
+    out+=eq(String.raw`v_x=\sum F_x=${signedSum(vectors.map(v=>vecData(v).x))}=${fmt(r.x)}`);
+    out+=eq(String.raw`v_y=\sum F_y=${signedSum(vectors.map(v=>vecData(v).y))}=${fmt(r.y)}`);
+    out+='<p><b>3. Velikost výslednice vypočítáme Pythagorovou větou.</b></p>';
+    out+=eq(String.raw`v=\sqrt{v_x^2+v_y^2}=\sqrt{(${fmt(r.x)})^2+(${fmt(r.y)})^2}=${fmt(mag)}`);
+    out+='<p><b>4. Určíme úhel výslednice s vodorovnou osou.</b></p>';
+    if(mag<1e-10) out+='<p>Výslednice je nulová, takže její směr nelze určit.</p>';
+    else {
+      const alpha=Math.atan2(Math.abs(r.y),Math.abs(r.x))*180/Math.PI;
+      const beta=90-alpha;
+      out+=eq(String.raw`\tan\alpha=\frac{|v_y|}{|v_x|}`);
+      if(Math.abs(r.x)<1e-10)out+='<p>Výslednice je svislá, proto je ostrý úhel s osou x roven 90°.</p>';
+      else out+=eq(String.raw`\alpha=\arctan\frac{${fmt(Math.abs(r.y))}}{${fmt(Math.abs(r.x))}}=${fmt(alpha,1)}^\circ`);
+      out+=eq(String.raw`\alpha+\beta=90^\circ\quad\Rightarrow\quad\beta=90^\circ-${fmt(alpha,1)}^\circ=${fmt(beta,1)}^\circ`);
+      out+=`<p>Ze znamének složek určíme kvadrant. <b>Orientovaný úhel výslednice od kladné osy x:</b></p>`;
+      out+=eq(String.raw`\varphi=${fmt(ang,1)}^\circ`);
+    }
+    return out;
+  }
+  function latexSymbol(s){
+    const raw=latexEsc(s||'F');
+    const m=raw.match(/^([A-Za-z]+)([0-9]+)$/);
+    if(m)return `${m[1]}_{${m[2]}}`;
+    return raw||'F';
+  }
+
+  function latexComponent(symbol,component){
+    const raw=latexEsc(symbol||'F');
+    const m=raw.match(/^([A-Za-z]+)([0-9]+)$/);
+    return m?`${m[1]}_{${m[2]},${component}}`:`${raw||'F'}_{${component}}`;
+  }
+  function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function latexEsc(s){ return String(s).replace(/[\\{}_$%&#^~]/g,''); }
+  function getAngle(x,y){
+    if(Math.hypot(x,y)<1e-12) return NaN;
+    let a=Math.atan2(y,x)*180/Math.PI;
+    if(els.angle360.checked && a<0) a+=360;
+    return a;
+  }
+  const numericalDetails=els.formula.closest('details');
+  let mathTimer=null,mathTask=Promise.resolve();
+  window.renderMath=function(){
+    clearTimeout(mathTimer);
+    if(!numericalDetails.open)return;
+    mathTimer=setTimeout(()=>{
+      mathTask=mathTask.then(async()=>{
+        if(!numericalDetails.open)return;
+        if(window.MathJax?.typesetClear) MathJax.typesetClear([els.formula]);
+        els.formula.innerHTML=mathTeX();
+        if(window.MathJax?.typesetPromise) await MathJax.typesetPromise([els.formula]);
+      }).catch(err=>console.warn('MathJax:',err));
+    },90);
+  };
+  numericalDetails.addEventListener('toggle',()=>{if(numericalDetails.open)window.renderMath();});
+
+  function updateResult(){
+    const r=resultant(), mag=Math.hypot(r.x,r.y), ang=getAngle(r.x,r.y);
+    els.rx.textContent=fmt(r.x,2); els.ry.textContent=fmt(r.y,2); els.rmag.textContent=fmt(mag,2); els.rang.textContent=Number.isFinite(ang)?fmt(ang,1)+'°':'—';
+    renderMath();
+  }
+  function updateAll(panel=true){ render(); updateResult(); if(panel) updateVectorPanel(); }
+
+  function eventPixel(e){const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse());}
+  function pointerCapture(e){ try{svg.setPointerCapture(e.pointerId)}catch(_){} }
+  function beginHandle(e,id,type){
+    e.stopPropagation(); snapshot(); selectedId=id; drawing=false; els.drawBtn.classList.remove('active');
+    dragMode={type,id}; pointerCapture(e);
+  }
+  function beginMove(e,id){
+    if(drawing) return;
+    e.stopPropagation(); snapshot(); selectedId=id;
+    const p=eventPoint(e), v=vectors.find(x=>x.id===id);
+    dragMode={type:'move',id,startPt:p,original:{x1:v.x1,y1:v.y1,x2:v.x2,y2:v.y2}}; pointerCapture(e); render();
+  }
+
+  svg.addEventListener('pointerdown',e=>{
+    if(!drawing){ selectedId=null; render(); return; }
+    e.preventDefault(); snapshot(); const p=eventPoint(e);
+    tempVector={id:'temp',x1:p.x,y1:p.y,x2:p.x,y2:p.y,color:colors[vectors.length%colors.length],symbol:nextSymbol(),desc:''};
+    dragMode={type:'new'}; pointerCapture(e); render();
+  });
+  svg.addEventListener('pointermove',e=>{
+    if(!dragMode) return; e.preventDefault(); const p=eventPoint(e);
+    if(dragMode.type==='new' && tempVector){ tempVector.x2=p.x; tempVector.y2=p.y; render(); return; }
+    if(dragMode.type==='label'){
+      const pos=eventPixel(e), dx=pos.x-dragMode.start.x,dy=pos.y-dragMode.start.y;
+      labels[dragMode.id]={x:dragMode.initial.x+dx,y:dragMode.initial.y+dy};render();return;
+    }
+    const v=vectors.find(x=>x.id===dragMode.id); if(!v) return;
+    if(dragMode.type==='start'){v.x1=p.x;v.y1=p.y;}
+    if(dragMode.type==='end'){v.x2=p.x;v.y2=p.y;}
+    if(dragMode.type==='move'){
+      const dx=p.x-dragMode.startPt.x,dy=p.y-dragMode.startPt.y,o=dragMode.original;
+      v.x1=o.x1+dx;v.y1=o.y1+dy;v.x2=o.x2+dx;v.y2=o.y2+dy;
+    }
+    updateAll(false);
+  });
+  svg.addEventListener('pointerup',e=>{
+    if(!dragMode) return;
+    if(dragMode.type==='new' && tempVector){
+      if(Math.hypot(tempVector.x2-tempVector.x1,tempVector.y2-tempVector.y1)>0.01){
+        tempVector.id=nextId++; vectors.push(tempVector); selectedId=tempVector.id;
+      } else history.pop();
+      tempVector=null;
+    }
+    dragMode=null; updateAll();
+  });
+  svg.addEventListener('pointercancel',()=>{dragMode=null;tempVector=null;updateAll();});
+
+  els.drawBtn.addEventListener('click',()=>{
+    drawing=!drawing; els.drawBtn.classList.toggle('active',drawing); selectedId=null;
+    els.drawBtn.textContent=drawing?'✎ Kreslení zapnuto':'✚ Kreslit vektor';
+    els.hint.textContent=drawing?'Táhni myší nebo prstem od počátku ke konci vektoru.':'Tažením konců upravíš vektor; popisek lze také přetáhnout. Vybraný vektor smažeš klávesou Delete.'; render();
+  });
+  els.undoBtn.addEventListener('click',undo);
+  // Delete/Backspace odstraní pouze vybraný vektor, nikdy ne při psaní do formuláře.
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Delete' && e.key!=='Backspace') return;
+    const focused=document.activeElement;
+    if(focused && (focused.matches('input, textarea, select') || focused.isContentEditable)) return;
+    if(selectedId===null || !vectors.some(v=>v.id===selectedId)) return;
+    e.preventDefault(); snapshot();
+    vectors=vectors.filter(v=>v.id!==selectedId);
+    delete labels[selectedId];selectedId=null;
+    updateAll();
+  });
+  [els.showGrid,els.showAxisX,els.showAxisY,els.snap,els.showResult,els.showComponents].forEach(x=>x.addEventListener('change',render));
+  els.angle360.addEventListener('change',updateResult);
+  els.range.addEventListener('input',render);
+
+  function mathMLIdentifier(text,arrow=true){
+    const t=escXML(text||'v');
+    return arrow ? `<mover accent="true"><mi>${t}</mi><mo>→</mo></mover>` : `<mi>${t}</mi>`;
+  }
+  function escXML(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+  function mn(v){ return `<mn>${escXML(fmt(v,2).replace(/\s/g,''))}</mn>`; }
+  function signedRow(terms){
+    let html=''; terms.forEach((n,i)=>{ if(i===0){html+=mn(n);} else if(n<0){html+='<mo>−</mo>'+mn(Math.abs(n));} else {html+='<mo>+</mo>'+mn(n);} }); return html||'<mn>0</mn>';
+  }
+  function mmlRow(inner){ return `<math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow>${inner}</mrow></math>`; }
+  function wordHTML(){
+    const r=resultant(),mag=Math.hypot(r.x,r.y),angle=getAngle(r.x,r.y);
+    let parts=['<h2>Výslednice vektorů – početní řešení</h2>'];
+    const line=(lhs,rhs)=>mmlRow(`<mrow>${lhs}<mo>=</mo>${rhs}</mrow>`);
+    const indexed=(s,k)=>`<msub><mi>${escXML(s)}</mi><mi>${escXML(k)}</mi></msub>`;
+    const fraction=(a,b)=>`<mfrac>${a}${b}</mfrac>`;
+    const square=(a)=>`<msup>${a}<mn>2</mn></msup>`;
+    parts.push('<p><b>1. Rozklad jednotlivých vektorů pomocí sinu a kosinu</b></p>');
+    vectors.forEach(v=>{const d=vecData(v),s=v.symbol||'F',a=(d.a+360)%360;
+      parts.push(`<p>Vektor ${escXML(s)}: velikost ${fmt(d.m)}, úhel ${fmt(a,1)}°</p>`);
+      parts.push(line(indexed(s,'x'),`${mn(d.m)}<mo>·</mo><mi>cos</mi><mo>(</mo>${mn(a)}<mo>°</mo><mo>)</mo><mo>=</mo>${mn(d.x)}`));
+      parts.push(line(indexed(s,'y'),`${mn(d.m)}<mo>·</mo><mi>sin</mi><mo>(</mo>${mn(a)}<mo>°</mo><mo>)</mo><mo>=</mo>${mn(d.y)}`));
+    });
+    parts.push('<p><b>2. Sečtení složek</b></p>');
+    parts.push(line(indexed('v','x'),signedRow(vectors.map(v=>vecData(v).x))+'<mo>=</mo>'+mn(r.x)));
+    parts.push(line(indexed('v','y'),signedRow(vectors.map(v=>vecData(v).y))+'<mo>=</mo>'+mn(r.y)));
+    parts.push('<p><b>3. Pythagorova věta</b></p>');
+    parts.push(line(mathMLIdentifier('v',false),`<msqrt><mrow>${square(indexed('v','x'))}<mo>+</mo>${square(indexed('v','y'))}</mrow></msqrt><mo>=</mo><msqrt><mrow>${square(mn(r.x))}<mo>+</mo>${square(mn(r.y))}</mrow></msqrt><mo>=</mo>${mn(mag)}`));
+    parts.push('<p><b>4. Úhel k vodorovné ose</b></p>');
+    if(Number.isFinite(angle)){
+      if(Math.abs(r.x)>1e-10) parts.push(line(`<mi>tan</mi><mi>α</mi>`,fraction(mn(Math.abs(r.y)),mn(Math.abs(r.x)))));
+      parts.push(line('<mi>α</mi>',`${mn(Math.atan2(Math.abs(r.y),Math.abs(r.x))*180/Math.PI)}<mo>°</mo>`));
+      parts.push(line('<mi>φ</mi>',`${mn(angle)}<mo>°</mo>`));
+    }else parts.push('<p>Úhel není určen, výslednice je nulová.</p>');
+    parts.push('<p>Grafické řešení: jednotlivé vektory přeneseme za sebe. Výslednice vede od začátku prvního ke konci posledního.</p>');
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>'+parts.join('')+'</body></html>';
+  }
+  function plainWordText(){
+    const tmp=document.createElement('div');tmp.innerHTML=mathTeX().replaceAll('\\(','').replaceAll('\\)','');
+    return tmp.textContent;
+  }
+  async function copyWord(){
+    try{
+      const html=wordHTML(), text=plainWordText();
+      if(navigator.clipboard && window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html':new Blob([html],{type:'text/html'}),
+          'text/plain':new Blob([text],{type:'text/plain'})
+        })]);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+      showToast('Postup je ve schránce – vlož ho do Wordu pomocí Ctrl+V.');
+    }catch(err){
+      const ta=document.createElement('textarea'); ta.value=plainWordText(); document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      showToast('Postup byl zkopírován jako text.');
+    }
+  }
+  document.getElementById('wordBtn').addEventListener('click',copyWord);
+
+  function exportPNG(){
+    const clone=svg.cloneNode(true);
+    clone.setAttribute('width','1800'); clone.setAttribute('height','1200');
+    const serializer=new XMLSerializer();
+    const source='<?xml version="1.0" standalone="no"?>\r\n'+serializer.serializeToString(clone);
+    const blob=new Blob([source],{type:'image/svg+xml;charset=utf-8'}); const url=URL.createObjectURL(blob); const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas'); canvas.width=1800; canvas.height=1200; const ctx=canvas.getContext('2d');
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,1800,1200);URL.revokeObjectURL(url);
+      const a=document.createElement('a'); a.download='vektory.png'; a.href=canvas.toDataURL('image/png'); a.click();
+    };
+    img.src=url;
+  }
+  document.getElementById('pngBtn').addEventListener('click',exportPNG);
+
+  // Výchozí ukázka – dva jednoduché vektory, aby bylo hned vidět ovládání.
+  vectors=[
+    {id:nextId++,x1:0,y1:0,x2:4,y2:2,color:colors[0],symbol:'a',desc:''},
+    {id:nextId++,x1:0,y1:0,x2:-1,y2:3,color:colors[1],symbol:'b',desc:''}
+  ];
+  updateAll();
+})();
+</script>
+</body>
+</html>
