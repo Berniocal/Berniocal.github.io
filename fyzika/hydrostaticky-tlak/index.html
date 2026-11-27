@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hydrostatický tlak – molekulární model v6</title>
+  <style>
+    :root{
+      --bg:#eef4f8;
+      --panel:#ffffff;
+      --text:#1b2a34;
+      --muted:#60727e;
+      --accent:#1f7fb5;
+      --water:#cfeeff;
+      --water-deep:#74c7ef;
+      --border:#264653;
+      --force:#d94841;
+      --particle:#ffd43b;
+    }
+
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:Arial, Helvetica, sans-serif;
+      background:linear-gradient(180deg,#f5f9fc 0%,var(--bg) 100%);
+      color:var(--text);
+    }
+
+    .app{
+      width:min(1180px,96vw);
+      margin:24px auto;
+      display:grid;
+      grid-template-columns:minmax(0,1.45fr) minmax(300px,.75fr);
+      gap:20px;
+      align-items:start;
+    }
+
+    .card{
+      background:var(--panel);
+      border-radius:18px;
+      box-shadow:0 10px 30px rgba(34,66,82,.12);
+      overflow:hidden;
+    }
+
+    .canvas-wrap{
+      padding:18px;
+    }
+
+    canvas{
+      display:block;
+      width:100%;
+      aspect-ratio:4/3;
+      border-radius:14px;
+      background:#f8fbfd;
+    }
+
+    .controls{
+      padding:16px 18px 20px;
+      border-top:1px solid #dbe6ec;
+    }
+
+    .control-row{
+      display:grid;
+      grid-template-columns:150px 1fr 64px;
+      gap:12px;
+      align-items:center;
+      margin:8px 0;
+    }
+
+    label{
+      font-weight:700;
+    }
+
+    input[type="range"]{
+      width:100%;
+      accent-color:var(--accent);
+    }
+
+    output{
+      font-variant-numeric:tabular-nums;
+      font-weight:700;
+      text-align:right;
+    }
+
+    .info{
+      padding:24px;
+    }
+
+    h1{
+      font-size:1.4rem;
+      line-height:1.25;
+      margin:0 0 14px;
+    }
+
+    h2{
+      font-size:1.05rem;
+      margin:22px 0 8px;
+    }
+
+    p{
+      line-height:1.55;
+      margin:8px 0;
+    }
+
+    .note{
+      margin-top:16px;
+      padding:13px 14px;
+      border-radius:12px;
+      background:#fff7d6;
+      border-left:5px solid #e0a800;
+      line-height:1.5;
+    }
+
+    .legend{
+      display:grid;
+      gap:10px;
+      margin-top:14px;
+    }
+
+    .legend-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .dot{
+      width:16px;
+      height:16px;
+      border-radius:50%;
+      background:var(--particle);
+      border:2px solid #7a6500;
+      flex:0 0 auto;
+    }
+
+    .arrow{
+      width:34px;
+      height:3px;
+      background:var(--force);
+      position:relative;
+      flex:0 0 auto;
+    }
+
+    .arrow::after{
+      content:"";
+      position:absolute;
+      right:-1px;
+      top:50%;
+      transform:translateY(-50%);
+      border-left:8px solid var(--force);
+      border-top:5px solid transparent;
+      border-bottom:5px solid transparent;
+    }
+
+    .small{
+      color:var(--muted);
+      font-size:.92rem;
+    }
+
+    @media (max-width:850px){
+      .app{grid-template-columns:1fr}
+      .control-row{grid-template-columns:125px 1fr 56px}
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card">
+      <div class="canvas-wrap">
+        <canvas id="scene" width="900" height="675" aria-label="Animace molekul kapaliny v nádobě"></canvas>
+      </div>
+      <div class="controls">
+        <div class="control-row">
+          <label for="level">Výška hladiny</label>
+          <input id="level" type="range" min="25" max="95" value="72" />
+          <output id="levelOut">72 %</output>
+        </div>
+        <div class="control-row">
+          <label for="motion">Rychlost kmitání</label>
+          <input id="motion" type="range" min="0" max="100" value="45" />
+          <output id="motionOut">45 %</output>
+        </div>
+        <div class="control-row">
+          <label for="forces">Síly odpuzování</label>
+          <input id="forces" type="range" min="0" max="100" value="65" />
+          <output id="forcesOut">65 %</output>
+        </div>
+      </div>
+    </section>
+
+    <aside class="card info">
+      <h1>Molekulární model hydrostatického tlaku – v6</h1>
+      <p>
+        Molekuly kapaliny se neustále neuspořádaně pohybují. Ve větší hloubce je kapalina
+        zatížena větším množstvím kapaliny nad sebou, proto jsou molekuly nepatrně více
+        přitlačeny k sobě.
+      </p>
+      <p>
+        Když jsou molekuly blíže, rostou mezi nimi odpudivé mezimolekulové síly.
+        Tyto síly se přenášejí mezi sousedními molekulami až ke stěnám nádoby.
+      </p>
+
+      <div class="note">
+        <strong>Pozor:</strong> rozdíl vzdáleností molekul je v této animaci úmyslně silně
+        přehnaný, aby byl dobře vidět. Skutečná kapalina se stlačuje jen velmi málo.
+        V této verzi navíc platí: čím jsou dvě molekuly blíže k sobě, tím delší je šipka síly.
+        Vybrané „mateřské“ molekuly se navíc v jednotlivých řádcích střídají do stran, aby šipky nešly nad sebou.
+      </div>
+
+      <h2>Co znamenají značky</h2>
+      <div class="legend">
+        <div class="legend-item">
+          <span class="dot"></span>
+          <span>Molekula kapaliny</span>
+        </div>
+        <div class="legend-item">
+          <span class="arrow"></span>
+          <span>Odpudivá síla mezi vybranými sousedními molekulami</span>
+        </div>
+      </div>
+
+      <h2>Důležitá myšlenka</h2>
+      <p class="small">
+        Větší tlak ve větší hloubce neznamená, že se molekuly musí pohybovat rychleji.
+        Znamená především, že jsou nepatrně blíže a přenášejí mezi sebou větší síly.
+      </p>
+    </aside>
+  </main>
+
+<script>
+(() => {
+  const canvas = document.getElementById('scene');
+  const ctx = canvas.getContext('2d');
+
+  const level = document.getElementById('level');
+  const motion = document.getElementById('motion');
+  const forces = document.getElementById('forces');
+
+  const levelOut = document.getElementById('levelOut');
+  const motionOut = document.getElementById('motionOut');
+  const forcesOut = document.getElementById('forcesOut');
+
+  const vessel = {
+    left: 145,
+    right: 755,
+    top: 70,
+    bottom: 605,
+    radius: 72
+  };
+
+  let particles = [];
+  let rows = [];
+  let lastLevel = Number(level.value);
+
+  function waterSurfaceY() {
+    const usable = vessel.bottom - vessel.top - 18;
+    return vessel.bottom - usable * (Number(level.value) / 100);
+  }
+
+  function insideVessel(x, y, margin = 18) {
+    const l = vessel.left + margin;
+    const r = vessel.right - margin;
+    const t = vessel.top + margin;
+    const b = vessel.bottom - margin;
+    if (x < l || x > r || y < t || y > b) return false;
+
+    const rr = vessel.radius - margin * 0.35;
+    const bottomCurveY = vessel.bottom - vessel.radius;
+
+    if (y <= bottomCurveY) return true;
+
+    const leftCx = vessel.left + vessel.radius;
+    const rightCx = vessel.right - vessel.radius;
+    const cy = vessel.bottom - vessel.radius;
+
+    if (x < leftCx) {
+      return (x-leftCx)**2 + (y-cy)**2 <= rr**2;
+    }
+    if (x > rightCx) {
+      return (x-rightCx)**2 + (y-cy)**2 <= rr**2;
+    }
+    return y <= b;
+  }
+
+  function targetSpacingForDepth(depth01) {
+    // Úmyslně přehnaný rozdíl pro názornost.
+    return 82 - 50 * depth01;
+  }
+
+  function rebuildParticles() {
+    particles = [];
+    rows = [];
+    const surface = waterSurfaceY();
+    const waterHeight = vessel.bottom - surface;
+
+    let row = 0;
+    let y = surface + 34;
+
+    while (y < vessel.bottom - 34) {
+      const depth01 = Math.min(1, Math.max(0, (y - surface) / waterHeight));
+      const spacing = targetSpacingForDepth(depth01);
+      const rowParticles = [];
+
+      for (let x = vessel.left + 34; x < vessel.right - 28; x += spacing) {
+        if (!insideVessel(x, y, 18)) continue;
+        const p = {
+          baseX: x,
+          baseY: y,
+          x,
+          y,
+          rowIndex: row,
+          rowSpacing: spacing,
+          phaseX: Math.random() * Math.PI * 2,
+          phaseY: Math.random() * Math.PI * 2,
+          ampX: 2.0 + Math.random() * 2.2,
+          ampY: 1.6 + Math.random() * 2.0,
+          size: 8.5 + Math.random() * 1.5
+        };
+        particles.push(p);
+        rowParticles.push(p);
+      }
+
+      if (rowParticles.length) rows.push(rowParticles);
+      y += Math.max(24, spacing * 0.84);
+      row++;
+    }
+  }
+
+  function resizeCanvasToDisplaySize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const width = Math.round(rect.width * dpr);
+    const height = Math.round(rect.height * dpr);
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    ctx.setTransform(canvas.width / 900, 0, 0, canvas.height / 675, 0, 0);
+  }
+
+  function roundedVesselPath() {
+    const {left, right, top, bottom, radius} = vessel;
+    ctx.beginPath();
+    ctx.moveTo(left, top);
+    ctx.lineTo(left, bottom - radius);
+    ctx.quadraticCurveTo(left, bottom, left + radius, bottom);
+    ctx.lineTo(right - radius, bottom);
+    ctx.quadraticCurveTo(right, bottom, right, bottom - radius);
+    ctx.lineTo(right, top);
+  }
+
+  function drawWater(surface) {
+    ctx.save();
+    roundedVesselPath();
+    ctx.clip();
+
+    const grad = ctx.createLinearGradient(0, surface, 0, vessel.bottom);
+    grad.addColorStop(0, '#dff5ff');
+    grad.addColorStop(1, '#74c7ef');
+    ctx.fillStyle = grad;
+    ctx.fillRect(vessel.left, surface, vessel.right - vessel.left, vessel.bottom - surface + 4);
+
+    ctx.strokeStyle = '#3aa7d8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(vessel.left + 2, surface);
+    ctx.lineTo(vessel.right - 2, surface);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawVessel() {
+    ctx.save();
+    ctx.strokeStyle = '#263b45';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    roundedVesselPath();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawDepthScale(surface) {
+    const x = 105;
+    ctx.save();
+    ctx.strokeStyle = '#4b6472';
+    ctx.fillStyle = '#4b6472';
+    ctx.lineWidth = 2;
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'right';
+
+    ctx.beginPath();
+    ctx.moveTo(x, surface);
+    ctx.lineTo(x, vessel.bottom);
+    ctx.stroke();
+
+    [0, .25, .5, .75, 1].forEach(frac => {
+      const y = surface + (vessel.bottom - surface) * frac;
+      ctx.beginPath();
+      ctx.moveTo(x - 8, y);
+      ctx.lineTo(x + 8, y);
+      ctx.stroke();
+    });
+
+    ctx.fillText('hloubka', x - 15, surface + 22);
+    ctx.restore();
+  }
+
+  function updateParticlePositions(time) {
+    const speed = Number(motion.value) / 100;
+    for (const p of particles) {
+      const x = p.baseX + Math.sin(time * (0.0012 + speed * 0.0028) + p.phaseX) * p.ampX * speed;
+      const y = p.baseY + Math.cos(time * (0.0010 + speed * 0.0025) + p.phaseY) * p.ampY * speed;
+      p.x = x;
+      p.y = y;
+    }
+  }
+
+  function drawParticle(surface, p) {
+    if (p.y < surface + 10) return;
+    const depth01 = Math.min(1, Math.max(0, (p.y - surface) / (vessel.bottom - surface)));
+    const radius = p.size + depth01 * 0.8;
+
+    const g = ctx.createRadialGradient(
+      p.x - radius * .35, p.y - radius * .4, radius * .2,
+      p.x, p.y, radius
+    );
+    g.addColorStop(0, '#fff6a5');
+    g.addColorStop(1, '#f3c623');
+
+    ctx.fillStyle = g;
+    ctx.strokeStyle = '#6f5e00';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  function drawParticles(surface) {
+    ctx.save();
+    for (const p of particles) {
+      drawParticle(surface, p);
+    }
+    ctx.restore();
+  }
+
+  function drawArrow(x1, y1, x2, y2, strength) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return;
+
+    const ux = dx / len;
+    const uy = dy / len;
+    const pad = 13;
+    const sx = x1 + ux * pad;
+    const sy = y1 + uy * pad;
+
+    // Čím větší síla, tím výrazně delší šipka.
+    const arrowLen = 4 + (strength ** 1.05) * 52;
+    const ex = sx + ux * arrowLen;
+    const ey = sy + uy * arrowLen;
+
+    const alpha = 0.30 + strength * 0.70;
+    const width = 0.9 + strength * 5.2;
+    const head = 5 + strength * 8;
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(217,72,65,${alpha})`;
+    ctx.fillStyle = `rgba(217,72,65,${alpha})`;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - ux * head - uy * head * .55, ey - uy * head + ux * head * .55);
+    ctx.lineTo(ex - ux * head + uy * head * .55, ey - uy * head - ux * head * .55);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function findVerticalNeighbor(center, rowParticles) {
+    if (!rowParticles || !rowParticles.length) return null;
+    let best = null;
+    let bestDx = Infinity;
+    for (const p of rowParticles) {
+      const dx = Math.abs(p.x - center.x);
+      if (dx < bestDx) {
+        bestDx = dx;
+        best = p;
+      }
+    }
+    return best;
+  }
+
+  function getRepresentativeParticle(rowParticles) {
+    if (!rowParticles || rowParticles.length < 3) return null;
+
+    const rowIndex = rowParticles[0].rowIndex || 0;
+    const pattern = [0.30, 0.50, 0.70, 0.42];
+    const frac = pattern[rowIndex % pattern.length];
+    let idx = Math.round((rowParticles.length - 1) * frac);
+
+    // Ať má vybraná molekula vždy souseda vlevo i vpravo.
+    idx = Math.max(1, Math.min(rowParticles.length - 2, idx));
+    return rowParticles[idx];
+  }
+
+  function getArrowStrength(center, neighbor, factor) {
+    const d = Math.hypot(neighbor.x - center.x, neighbor.y - center.y);
+    const maxRef = 86;
+    const minRef = 20;
+
+    // Čím menší vzdálenost mezi molekulami, tím větší síla.
+    const closeness = Math.max(0, Math.min(1, (maxRef - d) / (maxRef - minRef)));
+
+    // Zesílíme rozdíl mezi horní a dolní částí kapaliny.
+    const emphasized = closeness ** 0.45;
+    return Math.max(0.02, Math.min(1, factor * (emphasized ** 1.35)));
+  }
+
+  function drawForcePairs(surface) {
+    const factor = Number(forces.value) / 100;
+    if (factor <= 0.01 || rows.length < 3) return;
+
+    for (let rowIndex = 1; rowIndex < rows.length - 1; rowIndex++) {
+      const rowParticles = rows[rowIndex];
+      const center = getRepresentativeParticle(rowParticles);
+      if (!center) continue;
+
+      const idx = rowParticles.indexOf(center);
+      if (idx <= 0 || idx >= rowParticles.length - 1) continue;
+
+      const left = rowParticles[idx - 1];
+      const right = rowParticles[idx + 1];
+      const up = findVerticalNeighbor(center, rows[rowIndex - 1]);
+      const down = findVerticalNeighbor(center, rows[rowIndex + 1]);
+      const neighbors = [left, right, up, down].filter(Boolean);
+
+      for (const neighbor of neighbors) {
+        const strength = getArrowStrength(center, neighbor, factor);
+        drawArrow(center.x, center.y, neighbor.x, neighbor.y, strength);
+      }
+    }
+  }
+
+  function redrawRepresentativeParticles(surface) {
+    ctx.save();
+    for (let rowIndex = 1; rowIndex < rows.length - 1; rowIndex++) {
+      const center = getRepresentativeParticle(rows[rowIndex]);
+      if (center) drawParticle(surface, center);
+    }
+    ctx.restore();
+  }
+
+  function drawLabels(surface) {
+    ctx.save();
+    ctx.font = 'bold 21px Arial';
+    ctx.fillStyle = '#20556c';
+    ctx.textAlign = 'left';
+    ctx.fillText('molekuly dál od sebe', vessel.right - 250, surface + 34);
+
+    ctx.fillStyle = '#8b2f29';
+    ctx.fillText('čím blíž k sobě, tím delší šipky', vessel.right - 370, vessel.bottom - 38);
+    ctx.restore();
+  }
+
+  function frame(time) {
+    resizeCanvasToDisplaySize();
+
+    if (Number(level.value) !== lastLevel) {
+      lastLevel = Number(level.value);
+      rebuildParticles();
+    }
+
+    levelOut.value = `${level.value} %`;
+    motionOut.value = `${motion.value} %`;
+    forcesOut.value = `${forces.value} %`;
+
+    ctx.clearRect(0, 0, 900, 675);
+
+    const surface = waterSurfaceY();
+    drawWater(surface);
+    drawDepthScale(surface);
+    updateParticlePositions(time);
+    drawParticles(surface);
+    drawLabels(surface);
+    drawForcePairs(surface);
+    redrawRepresentativeParticles(surface);
+    drawVessel();
+
+    requestAnimationFrame(frame);
+  }
+
+  level.addEventListener('input', rebuildParticles);
+  window.addEventListener('resize', resizeCanvasToDisplaySize);
+
+  rebuildParticles();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

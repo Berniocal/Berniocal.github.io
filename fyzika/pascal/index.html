@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pascalův zákon – šíření tlaku v kapalině</title>
+  <style>
+    :root{
+      --bg:#eef6fb;
+      --panel:#ffffff;
+      --text:#17324a;
+      --muted:#5b7183;
+      --blue:#1197e8;
+      --blue-dark:#0879c4;
+      --line:#1f3e55;
+      --accent:#e53935;
+      --accent-2:#ff8a80;
+      --green:#2f9e66;
+      --shadow:0 18px 42px rgba(28,72,102,.14);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      overflow-x:hidden;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(17,151,232,.12), transparent 32rem),
+        linear-gradient(180deg,#f8fcff 0%,var(--bg) 100%);
+    }
+    .page{
+      width:min(1320px,100%);
+      margin:0 auto;
+      padding-left:14px;
+      padding-right:14px;
+      padding-top:24px;
+      padding-bottom:34px;
+    }
+    h1{
+      margin:0;
+      font-size:clamp(1.55rem,3vw,2.35rem);
+      line-height:1.15;
+      letter-spacing:-.02em;
+    }
+    .subtitle{
+      margin:8px 0 18px;
+      color:var(--muted);
+      font-size:1rem;
+      max-width:95ch;
+    }
+
+    .app{
+      display:grid;
+      grid-template-columns:minmax(0,1.45fr) minmax(0,.85fr);
+      gap:16px;
+      align-items:start;
+    }
+
+    .canvas-card,.side-card{
+      min-width:0;
+      max-width:100%;
+      background:rgba(255,255,255,.94);
+      border:1px solid rgba(31,62,85,.12);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .toolbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 16px;
+      border-bottom:1px solid rgba(31,62,85,.12);
+      background:linear-gradient(180deg,#fff,#f7fbfe);
+    }
+
+    .actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:9px;
+    }
+
+    button{
+      border:0;
+      border-radius:12px;
+      padding:10px 15px;
+      font:inherit;
+      font-weight:700;
+      cursor:pointer;
+      transition:transform .15s ease,box-shadow .15s ease;
+    }
+    button:hover{transform:translateY(-1px)}
+    button:active{transform:translateY(0)}
+    .primary{
+      color:#fff;
+      background:linear-gradient(180deg,#f45550,#d92d29);
+      box-shadow:0 8px 18px rgba(229,57,53,.22);
+    }
+    .secondary{
+      color:var(--text);
+      background:#eaf3f8;
+    }
+
+    .controls{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px 18px;
+      padding:14px 16px 16px;
+      border-bottom:1px solid rgba(31,62,85,.1);
+      background:#fbfdff;
+    }
+    .control{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:7px;
+      color:var(--muted);
+      font-weight:650;
+    }
+    .control-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    input[type="range"]{
+      width:100%;
+      accent-color:var(--accent);
+    }
+    .value{
+      min-width:88px;
+      text-align:right;
+      color:var(--text);
+      font-variant-numeric:tabular-nums;
+      font-weight:800;
+    }
+
+    .stage-wrap{
+      position:relative;
+      min-width:0;
+      overflow:hidden;
+      min-height:560px;
+      background:
+        linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),
+        repeating-linear-gradient(0deg,transparent 0 39px,rgba(31,62,85,.035) 40px),
+        repeating-linear-gradient(90deg,transparent 0 39px,rgba(31,62,85,.035) 40px);
+    }
+    canvas{
+      display:block;
+      width:100%;
+      height:560px;
+      touch-action:none;
+    }
+    .status{
+      position:absolute;
+      right:14px;
+      bottom:14px;
+      left:auto;
+      max-width:min(440px,calc(100% - 28px));
+      padding:11px 14px;
+      border-radius:14px;
+      color:var(--text);
+      background:rgba(255,255,255,.92);
+      border:1px solid rgba(31,62,85,.14);
+      box-shadow:0 8px 24px rgba(31,62,85,.1);
+      font-size:.95rem;
+      line-height:1.4;
+    }
+    .status strong{color:var(--accent)}
+
+    .legend{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      padding:14px 16px 16px;
+      border-top:1px solid rgba(31,62,85,.1);
+      background:#fbfdff;
+    }
+    .legend-item{
+      display:flex;
+      align-items:flex-start;
+      gap:9px;
+      padding:10px;
+      border-radius:12px;
+      background:#fff;
+      border:1px solid rgba(31,62,85,.1);
+      color:var(--muted);
+      font-size:.92rem;
+      line-height:1.35;
+    }
+    .dot{width:13px;height:13px;border-radius:50%;flex:0 0 auto;margin-top:3px}
+    .dot.blue{background:var(--blue)}
+    .dot.red{background:var(--accent)}
+    .dot.green{background:var(--green)}
+
+    .side-card{
+      padding:0;
+    }
+    .side-head{
+      padding:16px 18px 12px;
+      border-bottom:1px solid rgba(31,62,85,.12);
+      background:linear-gradient(180deg,#fff,#f7fbfe);
+    }
+    .side-head h2{
+      margin:0 0 6px;
+      font-size:1.18rem;
+    }
+    .side-head p{
+      margin:0;
+      color:var(--muted);
+      font-size:.95rem;
+      line-height:1.45;
+    }
+
+    .steps{
+      padding:14px 16px 16px;
+      display:grid;
+      gap:12px;
+    }
+    .step{
+      padding:13px 14px;
+      border-radius:16px;
+      border:1px solid rgba(31,62,85,.10);
+      background:#fff;
+    }
+    .step h3{
+      margin:0 0 8px;
+      font-size:1rem;
+    }
+    .step p{
+      margin:0;
+      overflow-wrap:anywhere;
+      color:var(--muted);
+      line-height:1.45;
+      font-size:.95rem;
+    }
+    .eq{
+      display:block;
+      max-width:100%;
+      overflow-x:auto;
+      overflow-y:hidden;
+      padding-bottom:3px;
+      margin-top:8px;
+      text-align:center;
+      font-family:"Cambria Math","Times New Roman",serif;
+      font-size:1.28rem;
+      color:#0d3a59;
+    }
+
+    .live-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      padding:0 16px 16px;
+    }
+    .live-box{
+      padding:12px 13px;
+      border-radius:14px;
+      border:1px solid rgba(31,62,85,.10);
+      background:#fff;
+    }
+    .live-box .label{
+      display:block;
+      color:var(--muted);
+      font-size:.88rem;
+      margin-bottom:6px;
+    }
+    .live-box .num{
+      font-size:1.1rem;
+      font-weight:800;
+      font-variant-numeric:tabular-nums;
+    }
+
+    .balance{
+      padding:0 16px 18px;
+    }
+    .balance-card{
+      padding:14px;
+      border-radius:16px;
+      border:1px solid rgba(31,62,85,.10);
+      background:#fff;
+    }
+    .balance-card h3{
+      margin:0 0 10px;
+      font-size:1rem;
+    }
+    .bar{
+      position:relative;
+      height:18px;
+      border-radius:999px;
+      background:#eaf3f8;
+      overflow:hidden;
+      border:1px solid rgba(31,62,85,.08);
+    }
+    .bar-fill{
+      position:absolute;
+      inset:0 auto 0 0;
+      width:0%;
+      background:linear-gradient(90deg,var(--accent),var(--accent-2));
+      transition:width .12s linear;
+    }
+    .balance-text{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:9px;
+      color:var(--muted);
+      font-size:.92rem;
+      font-variant-numeric:tabular-nums;
+    }
+    .hint{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:.92rem;
+      line-height:1.45;
+    }
+
+    .note{
+      padding:0 16px 18px;
+    }
+    .note-box{
+      padding:13px 14px;
+      border-radius:16px;
+      background:#f7fbff;
+      border:1px solid rgba(31,62,85,.10);
+      color:var(--muted);
+      line-height:1.45;
+      font-size:.93rem;
+    }
+    .note-box strong{color:var(--text)}
+    .note-box + .note-box{margin-top:10px}
+
+    mjx-container{
+      max-width:100%;
+    }
+    mjx-container[display="true"]{
+      overflow-x:auto;
+      overflow-y:hidden;
+      padding:2px 0 5px;
+    }
+
+    @media (max-width:1050px){
+      .app{grid-template-columns:1fr}
+    }
+    @media (max-width:760px){
+      .page{padding-left:8px;padding-right:8px}
+      .controls{grid-template-columns:1fr}
+      .legend{grid-template-columns:1fr}
+      canvas{height:480px}
+      .stage-wrap{min-height:480px}
+      .live-grid{grid-template-columns:1fr}
+      .status{font-size:.84rem}
+      .step{padding:12px}
+    }
+  </style>
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']]
+      },
+      chtml: {
+        scale: 1
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+</head>
+<body>
+  <main class="page">
+    <h1>Pascalův zákon – tlak roste, dokud se síly nevyrovnají</h1>
+    <p class="subtitle">
+      V animaci můžeš měnit <strong>sílu</strong> i <strong>plochu malého pístu</strong>.
+      Po zatlačení na píst se kapalina nepatrně stlačí, tlak v ní roste a kapalinou se šíří tlaková vlna.
+      Tlak roste tak dlouho, až síla kapaliny na píst vyrovná vnější sílu.
+    </p>
+
+    <section class="app">
+      <div class="canvas-card">
+        <div class="toolbar">
+          <div class="actions">
+            <button class="primary" id="pushBtn">Zatlačit na píst</button>
+            <button class="secondary" id="resetBtn">Vrátit zpět</button>
+            <button class="secondary" id="pauseBtn">Pozastavit</button>
+          </div>
+        </div>
+
+        <div class="controls">
+          <label class="control">
+            <span>Síla na píst \(F\)</span>
+            <div class="control-row">
+              <input id="forceSlider" type="range" min="20" max="150" step="5" value="70" />
+              <span class="value"><span id="forceValue">70</span> N</span>
+            </div>
+          </label>
+
+          <label class="control">
+            <span>Plocha malého pístu \(S\)</span>
+            <div class="control-row">
+              <input id="areaSlider" type="range" min="0.5" max="8" step="0.1" value="2.0" />
+              <span class="value"><span id="areaValue">2.0</span> cm²</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="stage-wrap">
+          <canvas id="canvas" aria-label="Uzavřená nádoba s vodou a pístem"></canvas>
+          <div class="status" id="status">
+            Částice kapaliny pouze <strong>kmitají</strong>. Kapalina jako celek zatím neproudí.
+          </div>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item">
+            <span class="dot blue"></span>
+            <span><strong>Modré kuličky:</strong> částice vody. Kmitají kolem rovnovážných poloh.</span>
+          </div>
+          <div class="legend-item">
+            <span class="dot red"></span>
+            <span><strong>Červený pás:</strong> procházející tlaková vlna.</span>
+          </div>
+          <div class="legend-item">
+            <span class="dot green"></span>
+            <span><strong>Zelené tlakoměry:</strong> ukazují přírůstek tlaku <strong>Δp</strong> ve třech různých místech.</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side-card">
+        <div class="side-head">
+          <h2>Co se děje fyzikálně</h2>
+          <p>
+            Menší plocha pístu při stejné síle znamená větší tlak, protože kapalina musí vyvinout
+            stejnou sílu zpět na menší plochu.
+          </p>
+        </div>
+
+        <div class="steps">
+          <div class="step">
+            <h3>1. Působíme silou na píst</h3>
+            <p>Na píst tlačíme vnější silou \(F\). Tím v kapalině neřešíme celý tlak \(p\), ale jen nově vyvolaný přírůstek tlaku \(\Delta p\).</p>
+            <span class="eq">Δp = \(\dfrac{F}{S}\)</span>
+          </div>
+
+          <div class="step">
+            <h3>2. Kapalina začne tlačit zpět</h3>
+            <p>Tlak v kapalině působí na píst opačným směrem. Síla kapaliny na píst je:</p>
+            <span class="eq">\(F_{\mathrm{kap}} = \Delta p \cdot S\)</span>
+          </div>
+
+          <div class="step">
+            <h3>3. Tlak roste až do rovnováhy</h3>
+            <p>Dokud platí \(F_{\mathrm{kap}} &lt; F\), píst se ještě tlačí dovnitř. Rovnováha nastane, když:</p>
+            <span class="eq">\(F_{\mathrm{kap}} = F\)</span>
+          </div>
+
+          <div class="step">
+            <h3>4. Pascalův zákon</h3>
+            <p>Po velmi krátké době se přírůstek tlaku přenese do všech míst uzavřené kapaliny:</p>
+            <span class="eq">\(Δp_1 = Δp_2 = Δp_3 = \dots\)</span>
+          </div>
+        </div>
+
+        <div class="live-grid">
+          <div class="live-box">
+            <span class="label">Nastavená síla \(F\)</span>
+            <div class="num" id="forceLive">70 N</div>
+          </div>
+          <div class="live-box">
+            <span class="label">Plocha pístu \(S\)</span>
+            <div class="num" id="areaLive">2.0 cm²</div>
+          </div>
+          <div class="live-box">
+            <span class="label">Okamžitý přírůstek tlaku \(\Delta p\)</span>
+            <div class="num" id="pressureLive">0 kPa</div>
+          </div>
+          <div class="live-box">
+            <span class="label">Síla kapaliny na píst \(F_{\mathrm{kap}}\)</span>
+            <div class="num" id="fluidForceLive">0 N</div>
+          </div>
+          <div class="live-box">
+            <span class="label">Řádový čas vyrovnání v reálu</span>
+            <div class="num" id="timeLive">0.3 ms</div>
+          </div>
+        </div>
+
+        <div class="balance">
+          <div class="balance-card">
+            <h3>Vyrovnávání sil na pístu</h3>
+            <div class="bar"><div class="bar-fill" id="balanceFill"></div></div>
+            <div class="balance-text">
+              <span id="leftBalance">F<sub>kap</sub> = 0 N</span>
+              <span id="rightBalance">F = 70 N</span>
+            </div>
+            <div class="hint" id="balanceHint">
+              Zatím je F<sub>kap</sub> = 0 N, takže píst nic „nezastavuje“.
+            </div>
+          </div>
+        </div>
+
+        <div class="note">
+          <div class="note-box">
+            <strong>Pozor na značení:</strong> v animaci nesledujeme celý tlak \(p\), ale jen jeho
+            <strong>přírůstek</strong> \(\Delta p\), který vznikne zatlačením na píst.
+            Kdyby měla kapalina před zatlačením tlak \(p_0\), pak po zatlačení bude v každém místě
+            \[ p = p_0 + \Delta p. \]
+            Proto je pro výklad přehlednější psát rovnou
+            \[
+              \Delta p=\frac{F}{S}
+            \]
+            a neplést žákům dohromady původní tlak \(p_0\) a nově vyvolaný přírůstek \(\Delta p\).
+          </div>
+          <div class="note-box">
+            <strong>Jak rychle se to v reálu vyrovná?</strong>
+            Změna tlaku se ve vodě šíří přibližně rychlostí zvuku
+            \[
+              v\approx 1500\,\mathrm{m\,s^{-1}}
+            \]
+            V nádobě dlouhé asi \(L \approx 0{,}5\,\mathrm{m}\) proto trvá přenos řádově
+            \[
+              t\approx\frac{L}{v}
+              =\frac{0{,}5}{1500}\,\mathrm{s}
+              \approx 3{,}3\cdot10^{-4}\,\mathrm{s}
+              \approx 0{,}3\,\mathrm{ms}
+            \]
+            Tedy zhruba <strong>desetiny milisekundy až jednotky milisekund</strong>.
+            Animace je proto záměrně hodně zpomalená, aby bylo šíření tlaku vidět.
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+<script>
+(() => {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  const pushBtn = document.getElementById('pushBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+
+  const forceSlider = document.getElementById('forceSlider');
+  const areaSlider = document.getElementById('areaSlider');
+
+  const forceValue = document.getElementById('forceValue');
+  const areaValue = document.getElementById('areaValue');
+  const forceLive = document.getElementById('forceLive');
+  const areaLive = document.getElementById('areaLive');
+  const pressureLive = document.getElementById('pressureLive');
+  const fluidForceLive = document.getElementById('fluidForceLive');
+  const timeLive = document.getElementById('timeLive');
+  const balanceFill = document.getElementById('balanceFill');
+  const leftBalance = document.getElementById('leftBalance');
+  const rightBalance = document.getElementById('rightBalance');
+  const balanceHint = document.getElementById('balanceHint');
+  const status = document.getElementById('status');
+
+  let dpr = Math.max(1, Math.min(1.5, window.devicePixelRatio || 1));
+  let W = 0, H = 0;
+
+  let force = Number(forceSlider.value); // N
+  let areaCm2 = Number(areaSlider.value); // cm²
+  let particles = [];
+  let running = true;
+
+  let phase = 'idle'; // idle, pressing, wave, equalized, releasing
+  let phaseStart = performance.now();
+  let lastTime = performance.now();
+  let lastUiUpdate = 0;
+
+  let pistonDepth = 0;
+  let targetDepth = 0;
+  let pressureLevel = 0; // 0..1 relative to target pressure
+  let waveProgress = -0.15;
+
+  const vessel = {
+    x: 150, y: 130, w: 760, h: 300,
+    neckX: 105, neckY: 220, neckW: 95, neckH: 120
+  };
+
+  function areaToFaceHeight(a){
+    // visual proxy for the piston face size
+    const t = (Math.sqrt(a) - Math.sqrt(0.5)) / (Math.sqrt(8) - Math.sqrt(0.5));
+    return 48 + t * 150;
+  }
+
+  function getTargetPressurePa(){
+    const areaM2 = areaCm2 * 1e-4;
+    return force / areaM2;
+  }
+
+  function getCurrentPressurePa(){
+    return pressureLevel * getTargetPressurePa();
+  }
+
+  function getCurrentFluidForceN(){
+    return getCurrentPressurePa() * areaCm2 * 1e-4;
+  }
+
+  const MAX_PRESSURE_PA = 150 / (0.5e-4); // odpovídá max. síle a min. ploše ve sliderech
+
+  function clamp01(x){
+    return Math.max(0, Math.min(1, x));
+  }
+
+  function smoothstep(edge0, edge1, x){
+    if (edge0 === edge1) return x < edge0 ? 0 : 1;
+    const t = clamp01((x - edge0) / (edge1 - edge0));
+    return t * t * (3 - 2 * t);
+  }
+
+  function getGaugePressurePa(normPos){
+    const targetPa = getTargetPressurePa();
+
+    if (phase === 'idle' || phase === 'pressing') return 0;
+
+    if (phase === 'wave') {
+      // Každý tlakoměr začne růst teprve ve chvíli, kdy k němu dorazí tlaková vlna.
+      const localRise = smoothstep(normPos - 0.08, normPos + 0.05, waveProgress);
+      return targetPa * localRise;
+    }
+
+    if (phase === 'equalized') return targetPa;
+
+    if (phase === 'releasing') return getCurrentPressurePa();
+
+    return 0;
+  }
+
+  function pressureToGaugeRatio(pa){
+    return clamp01(pa / MAX_PRESSURE_PA);
+  }
+
+  function fmtPressure(pa){
+    const kPa = pa / 1000;
+    if (kPa < 1000) return `${kPa.toFixed(kPa < 100 ? 1 : 0)} kPa`;
+    return `${(kPa/1000).toFixed(2)} MPa`;
+  }
+
+  function updateLiveText(){
+    forceValue.textContent = force.toFixed(0);
+    areaValue.textContent = areaCm2.toFixed(1);
+
+    forceLive.textContent = `${force.toFixed(0)} N`;
+    areaLive.textContent = `${areaCm2.toFixed(1)} cm²`;
+
+    const p = getCurrentPressurePa();
+    const fkap = getCurrentFluidForceN();
+
+    pressureLive.textContent = fmtPressure(p);
+    fluidForceLive.textContent = `${fkap.toFixed(1)} N`;
+    const modelLengthM = 0.5;
+    const equalizeTimeMs = modelLengthM / 1500 * 1000;
+    timeLive.textContent = `${equalizeTimeMs.toFixed(1)} ms`;
+
+    const ratio = Math.max(0, Math.min(1, force === 0 ? 0 : fkap / force));
+    balanceFill.style.width = `${ratio * 100}%`;
+    leftBalance.innerHTML = `F<sub>kap</sub> = ${fkap.toFixed(1)} N`;
+    rightBalance.innerHTML = `F = ${force.toFixed(0)} N`;
+
+    if (ratio < 0.03) {
+      balanceHint.innerHTML = `Zatím je F<sub>kap</sub> téměř nulová, takže píst nic „nezastavuje“.`;
+    } else if (ratio < 0.98) {
+      balanceHint.textContent = `Tlak roste, a tím roste i síla kapaliny na píst.`;
+    } else {
+      balanceHint.innerHTML = `Síly jsou vyrovnané: F<sub>kap</sub> = F. Píst je v rovnováze.`;
+    }
+  }
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    W = Math.max(280, Math.round(rect.width));
+    H = Math.max(430, Math.round(rect.height));
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const compact = W < 620;
+    const scale = Math.min(1, W / 920, H / 560);
+
+    // Pro píst, rukojeť a šipku vždy rezervujeme místo uvnitř canvasu.
+    const leftReserve = compact
+      ? Math.max(82, W * 0.25)
+      : Math.min(190, Math.max(135, W * 0.19));
+
+    const rightMargin = compact ? 14 : 26;
+    vessel.neckW = compact ? Math.max(30, 72 * scale) : Math.max(58, 90 * scale);
+
+    // V nákresu představuje výška válce průměr pístu, proto roste přibližně
+    // s odmocninou plochy. Píst tak vždy přesně sedí ve válci.
+    const areaT = (Math.sqrt(areaCm2) - Math.sqrt(0.5)) /
+                  (Math.sqrt(8) - Math.sqrt(0.5));
+    vessel.neckH = (compact ? 58 : 72) + areaT * (compact ? 72 : 100);
+
+    vessel.x = leftReserve + vessel.neckW;
+    vessel.w = Math.max(165, W - vessel.x - rightMargin);
+    vessel.h = Math.min(compact ? 245 : 300, H * (compact ? 0.48 : 0.54));
+    vessel.y = Math.max(compact ? 145 : 125, (H - vessel.h) / 2 + 30);
+    vessel.neckX = vessel.x - vessel.neckW + 3;
+    vessel.neckY = vessel.y + (vessel.h - vessel.neckH) / 2;
+
+    makeParticles();
+  }
+
+  function insideLiquid(x,y){
+    const inMain = x > vessel.x + 8 && x < vessel.x + vessel.w - 8 &&
+                   y > vessel.y + 8 && y < vessel.y + vessel.h - 8;
+    const inNeck = x > vessel.neckX + 6 && x < vessel.x + 14 &&
+                   y > vessel.neckY + 8 && y < vessel.neckY + vessel.neckH - 8;
+    return inMain || inNeck;
+  }
+
+  function makeParticles(){
+    particles = [];
+    const spacing = Math.max(23, Math.min(30, W / 34));
+    const jitter = spacing * 0.18;
+    const r = Math.max(3.2, spacing * 0.18);
+
+    for(let y = vessel.y + 20; y < vessel.y + vessel.h - 16; y += spacing){
+      for(let x = vessel.x + 22; x < vessel.x + vessel.w - 18; x += spacing){
+        if(insideLiquid(x,y)){
+          particles.push({
+            x0:x + (Math.random()-.5)*jitter,
+            y0:y + (Math.random()-.5)*jitter,
+            phase:Math.random()*Math.PI*2,
+            freq:.0025 + Math.random()*.002,
+            amp:1.4 + Math.random()*1.8,
+            r
+          });
+        }
+      }
+    }
+    for(let y = vessel.neckY + 18; y < vessel.neckY + vessel.neckH - 12; y += spacing){
+      for(let x = vessel.neckX + 18; x < vessel.x + 8; x += spacing){
+        if(insideLiquid(x,y)){
+          particles.push({
+            x0:x + (Math.random()-.5)*jitter,
+            y0:y + (Math.random()-.5)*jitter,
+            phase:Math.random()*Math.PI*2,
+            freq:.0025 + Math.random()*.002,
+            amp:1.4 + Math.random()*1.8,
+            r
+          });
+        }
+      }
+    }
+  }
+
+  function vesselPath(){
+    const r = 28;
+    ctx.beginPath();
+    ctx.moveTo(vessel.x + r, vessel.y);
+    ctx.lineTo(vessel.x + vessel.w - r, vessel.y);
+    ctx.quadraticCurveTo(vessel.x + vessel.w, vessel.y, vessel.x + vessel.w, vessel.y + r);
+    ctx.lineTo(vessel.x + vessel.w, vessel.y + vessel.h - r);
+    ctx.quadraticCurveTo(vessel.x + vessel.w, vessel.y + vessel.h, vessel.x + vessel.w - r, vessel.y + vessel.h);
+    ctx.lineTo(vessel.x + r, vessel.y + vessel.h);
+    ctx.quadraticCurveTo(vessel.x, vessel.y + vessel.h, vessel.x, vessel.y + vessel.h - r);
+    ctx.lineTo(vessel.x, vessel.neckY + vessel.neckH);
+    ctx.lineTo(vessel.neckX, vessel.neckY + vessel.neckH);
+    ctx.lineTo(vessel.neckX, vessel.neckY);
+    ctx.lineTo(vessel.x, vessel.neckY);
+    ctx.lineTo(vessel.x, vessel.y + r);
+    ctx.quadraticCurveTo(vessel.x, vessel.y, vessel.x + r, vessel.y);
+    ctx.closePath();
+  }
+
+  function drawLiquid(){
+    ctx.save();
+    vesselPath();
+    ctx.clip();
+
+    const grad = ctx.createLinearGradient(0,vessel.y,0,vessel.y+vessel.h);
+    grad.addColorStop(0,'#4cc3ff');
+    grad.addColorStop(.45,'#159ee8');
+    grad.addColorStop(1,'#087bc7');
+    ctx.fillStyle = grad;
+    ctx.fillRect(vessel.neckX, vessel.y, vessel.w + vessel.neckW, vessel.h);
+
+    if(pressureLevel > 0.001){
+      ctx.fillStyle = `rgba(229,57,53,${0.06 + pressureLevel*0.16})`;
+      ctx.fillRect(vessel.neckX, vessel.y, vessel.w + vessel.neckW, vessel.h);
+    }
+
+    if(phase === 'wave'){
+      const frontX = vessel.neckX + (vessel.w + vessel.neckW) * waveProgress;
+      const band = Math.max(70, W*0.08);
+      const g = ctx.createLinearGradient(frontX-band,0,frontX+band,0);
+      g.addColorStop(0,'rgba(229,57,53,0)');
+      g.addColorStop(.42,'rgba(229,57,53,.08)');
+      g.addColorStop(.5,'rgba(229,57,53,.62)');
+      g.addColorStop(.58,'rgba(229,57,53,.08)');
+      g.addColorStop(1,'rgba(229,57,53,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(frontX-band, vessel.y, band*2, vessel.h);
+    }
+
+    const shine = ctx.createLinearGradient(vessel.x,0,vessel.x+vessel.w,0);
+    shine.addColorStop(0,'rgba(255,255,255,.08)');
+    shine.addColorStop(.35,'rgba(255,255,255,.22)');
+    shine.addColorStop(.7,'rgba(255,255,255,.04)');
+    shine.addColorStop(1,'rgba(255,255,255,.13)');
+    ctx.fillStyle = shine;
+    ctx.fillRect(vessel.neckX, vessel.y+10, vessel.w+vessel.neckW, vessel.h-20);
+    ctx.restore();
+  }
+
+  function drawParticles(t){
+    ctx.save();
+    vesselPath();
+    ctx.clip();
+    for(const p of particles){
+      const jitterX = Math.sin(t*p.freq + p.phase) * p.amp;
+      const jitterY = Math.cos(t*(p.freq*.83) + p.phase*1.7) * p.amp*.72;
+
+      let waveKick = 0;
+      if(phase === 'wave'){
+        const normalized = (p.x0 - vessel.neckX) / (vessel.w + vessel.neckW);
+        const dist = normalized - waveProgress;
+        waveKick = Math.exp(-Math.pow(dist/0.055,2)) * (4 + force*0.03);
+      }
+
+      const compress = pressureLevel * Math.max(0, 1 - (p.x0-vessel.neckX)/(vessel.w+vessel.neckW)) * 1.7;
+      const x = p.x0 + jitterX + waveKick - compress;
+      const y = p.y0 + jitterY;
+
+      const glow = phase === 'wave'
+        ? Math.exp(-Math.pow(((p.x0-vessel.neckX)/(vessel.w+vessel.neckW)-waveProgress)/0.06,2))
+        : 0;
+
+      if(glow > .05){
+        ctx.beginPath();
+        ctx.arc(x,y,p.r*2.0,0,Math.PI*2);
+        ctx.fillStyle = `rgba(255,87,82,${.18*glow})`;
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.arc(x,y,p.r,0,Math.PI*2);
+      ctx.fillStyle = glow > .35 ? '#fff4f3' : '#e8f8ff';
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = glow > .35 ? '#d93430' : 'rgba(0,89,150,.55)';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x-p.r*.32,y-p.r*.36,p.r*.24,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,.8)';
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawWalls(){
+    ctx.save();
+    vesselPath();
+    ctx.lineWidth = Math.max(5, W/220);
+    ctx.strokeStyle = '#23465d';
+    ctx.stroke();
+
+    vesselPath();
+    ctx.lineWidth = Math.max(2, W/520);
+    ctx.strokeStyle = 'rgba(255,255,255,.72)';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPiston(){
+    const compact = W < 620;
+    const guideX = Math.max(8, vessel.neckX - (compact ? 42 : 58));
+    const guideY = vessel.neckY - 10;
+    const guideH = vessel.neckH + 20;
+    const guideW = Math.max(40, vessel.neckX - guideX + 8);
+
+    // Píst vždy těsně zapadá do válce; mění se zároveň píst i šířka válce.
+    const faceH = Math.max(28, vessel.neckH - 14);
+    const faceY = vessel.neckY + 7;
+    const x = Math.min(vessel.neckX - 12, guideX + pistonDepth);
+
+    ctx.save();
+
+    // vedení pístu
+    ctx.fillStyle = 'rgba(212,226,236,.45)';
+    ctx.strokeStyle = 'rgba(35,70,93,.45)';
+    ctx.lineWidth = 2;
+    ctx.fillRect(guideX, guideY, guideW, guideH);
+    ctx.strokeRect(guideX, guideY, guideW, guideH);
+
+    // táhlo
+    ctx.lineCap='round';
+    ctx.strokeStyle='#7a8790';
+    ctx.lineWidth=compact ? 10 : 14;
+    ctx.beginPath();
+    ctx.moveTo(Math.max(10, x-(compact ? 34 : 50)), vessel.neckY + vessel.neckH/2);
+    ctx.lineTo(x-2, vessel.neckY + vessel.neckH/2);
+    ctx.stroke();
+
+    // rukojeť
+    const handleX = Math.max(12, x-(compact ? 45 : 66));
+    ctx.strokeStyle='#495760';
+    ctx.lineWidth=compact ? 13 : 18;
+    ctx.beginPath();
+    ctx.moveTo(handleX, vessel.neckY + vessel.neckH/2 - Math.min(32, vessel.neckH*.32));
+    ctx.lineTo(handleX, vessel.neckY + vessel.neckH/2 + Math.min(32, vessel.neckH*.32));
+    ctx.stroke();
+
+    // čelo pístu
+    const pg = ctx.createLinearGradient(x-8,0,x+18,0);
+    pg.addColorStop(0,'#d6dde2');
+    pg.addColorStop(.5,'#f9fbfc');
+    pg.addColorStop(1,'#9caab4');
+    ctx.fillStyle = pg;
+    ctx.fillRect(x-8, faceY, 24, faceH);
+    ctx.strokeStyle = '#1f3e55';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x-8, faceY, 24, faceH);
+
+    ctx.fillStyle = 'rgba(229,57,53,.20)';
+    ctx.fillRect(x+13, faceY, 7, faceH);
+
+    // popisek plochy – vždy uvnitř plátna
+    ctx.fillStyle = '#17324a';
+    ctx.font = `700 ${compact ? 12 : 15}px system-ui`;
+    ctx.textAlign = 'left';
+    const areaLabelX = Math.max(8, Math.min(W-190, guideX));
+    const areaLabelY = Math.max(76, faceY - 12);
+    ctx.fillText(`S = ${areaCm2.toFixed(1)} cm²`, areaLabelX, areaLabelY);
+
+    // šipka síly – její začátek je omezen levým okrajem canvasu
+    const ay = Math.max(96, faceY - (compact ? 28 : 34));
+    const arrowEndX = x - 14;
+    const desiredStart = arrowEndX - (44 + force*0.30);
+    const arrowStartX = Math.max(8, desiredStart);
+
+    ctx.strokeStyle='#e53935';
+    ctx.fillStyle='#e53935';
+    ctx.lineWidth=compact ? 4 : 5;
+    ctx.beginPath();
+    ctx.moveTo(arrowStartX, ay);
+    ctx.lineTo(arrowEndX, ay);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(arrowEndX, ay);
+    ctx.lineTo(arrowEndX-13, ay-9);
+    ctx.lineTo(arrowEndX-13, ay+9);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.font = `700 ${compact ? 12 : 15}px system-ui`;
+    ctx.fillText(`F = ${force.toFixed(0)} N`, arrowStartX, ay-9);
+    ctx.restore();
+  }
+
+  function drawGauge(x,y,label,pressurePa){
+    const radius = Math.max(28, Math.min(40,W/28));
+    const gaugeRatio = pressureToGaugeRatio(pressurePa);
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.fillStyle='#fff';
+    ctx.strokeStyle='#23465d';
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.arc(0,0,radius,0,Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    for(let i=0;i<=8;i++){
+      const a = Math.PI*.78 + i*(Math.PI*1.44/8);
+      const r1 = radius*.66, r2=radius*.82;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);
+      ctx.lineTo(Math.cos(a)*r2,Math.sin(a)*r2);
+      ctx.strokeStyle='rgba(31,62,85,.5)';
+      ctx.lineWidth=1.3;
+      ctx.stroke();
+    }
+
+    const needle = -Math.PI*.72 + gaugeRatio*Math.PI*1.25;
+    ctx.rotate(needle);
+    ctx.strokeStyle = gaugeRatio>.02 ? '#2f9e66' : '#e53935';
+    ctx.lineWidth=4;
+    ctx.beginPath();
+    ctx.moveTo(-5,0);
+    ctx.lineTo(radius*.68,0);
+    ctx.stroke();
+    ctx.fillStyle=ctx.strokeStyle;
+    ctx.beginPath();
+    ctx.arc(0,0,5,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    const labelY = y + radius + 10;
+    ctx.save();
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.font=`800 ${Math.max(14, Math.min(19, W/55))}px system-ui`;
+    const padX = 10;
+    const metrics = ctx.measureText(label.replace('|',''));
+    const boxW = Math.max(44, metrics.width + padX*2);
+    const boxH = 30;
+    const boxX = x - boxW/2;
+    const boxY = labelY;
+    ctx.fillStyle='rgba(255,255,255,.97)';
+    ctx.strokeStyle='rgba(31,62,85,.24)';
+    ctx.lineWidth=1.5;
+    const rr = 10;
+    ctx.beginPath();
+    ctx.moveTo(boxX+rr, boxY);
+    ctx.lineTo(boxX+boxW-rr, boxY);
+    ctx.quadraticCurveTo(boxX+boxW, boxY, boxX+boxW, boxY+rr);
+    ctx.lineTo(boxX+boxW, boxY+boxH-rr);
+    ctx.quadraticCurveTo(boxX+boxW, boxY+boxH, boxX+boxW-rr, boxY+boxH);
+    ctx.lineTo(boxX+rr, boxY+boxH);
+    ctx.quadraticCurveTo(boxX, boxY+boxH, boxX, boxY+boxH-rr);
+    ctx.lineTo(boxX, boxY+rr);
+    ctx.quadraticCurveTo(boxX, boxY, boxX+rr, boxY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle='#17324a';
+    const parts = label.split('|');
+    const base = parts[0];
+    const index = parts[1] || '';
+    ctx.font=`800 ${Math.max(15, Math.min(20, W/52))}px system-ui`;
+    ctx.fillText(base, x - (index ? 3 : 0), boxY + boxH/2 + 1);
+    if (index) {
+      const baseW = ctx.measureText(base).width;
+      ctx.font=`800 ${Math.max(10, Math.min(13, W/75))}px system-ui`;
+      ctx.fillText(index, x + baseW/2 - 1, boxY + boxH/2 + 7);
+    }
+    ctx.restore();
+  }
+
+  function drawConnectors(){
+    const gaugeY = vessel.y - 74;
+    const xs = [
+      vessel.x + vessel.w*.18,
+      vessel.x + vessel.w*.50,
+      vessel.x + vessel.w*.82
+    ];
+    ctx.save();
+    ctx.strokeStyle='#23465d';
+    ctx.lineWidth=5;
+    ctx.lineCap='round';
+    for(const gx of xs){
+      ctx.beginPath();
+      ctx.moveTo(gx,vessel.y);
+      ctx.lineTo(gx,gaugeY+32);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    const gaugeNorms = [0.18, 0.50, 0.82];
+    drawGauge(xs[0],gaugeY,'Δp|1', getGaugePressurePa(gaugeNorms[0]));
+    drawGauge(xs[1],gaugeY,'Δp|2', getGaugePressurePa(gaugeNorms[1]));
+    drawGauge(xs[2],gaugeY,'Δp|3', getGaugePressurePa(gaugeNorms[2]));
+  }
+
+  function drawLabels(){
+    ctx.fillStyle='#17324a';
+    ctx.font='700 16px system-ui';
+    ctx.fillText('uzavřená kapalina',vessel.x+vessel.w*.40,vessel.y+vessel.h+34);
+
+    if(phase === 'wave'){
+      ctx.fillStyle='#b51f1b';
+      ctx.font='700 17px system-ui';
+      const frontX = vessel.neckX + (vessel.w + vessel.neckW) * waveProgress;
+      ctx.fillText('tlaková vlna',Math.min(W-132,Math.max(18,frontX-50)),vessel.y+vessel.h*.5);
+    }
+
+    if(phase === 'equalized'){
+      ctx.fillStyle='#227a50';
+      ctx.font='800 18px system-ui';
+      ctx.textAlign='center';
+      ctx.fillText('Rovnováha: Fₖₐₚ = F a v celé kapalině je stejný přírůstek tlaku.',vessel.x+vessel.w/2,vessel.y+vessel.h*.52);
+      ctx.textAlign='start';
+    }
+  }
+
+  function setStatusText(){
+    if (phase === 'idle') {
+      status.innerHTML = 'Částice kapaliny pouze <strong>kmitají</strong>. Kapalina jako celek zatím neproudí.';
+    } else if (phase === 'pressing') {
+      status.innerHTML = 'Píst působí silou na plochu <em>S</em>. Nesledujeme celý tlak <em>p</em>, ale jen nově vyvolaný přírůstek <strong>Δp = F/S</strong>.';
+    } else if (phase === 'wave') {
+      status.innerHTML = 'Přírůstek tlaku <strong>Δp</strong> se šíří kapalinou jako tlaková vlna. Zároveň roste síla kapaliny na píst: <strong>Fₖₐₚ = Δp·S</strong>.';
+    } else if (phase === 'equalized') {
+      status.innerHTML = 'Po ustálení je přírůstek tlaku všude stejný: <strong>Δp₁ = Δp₂ = Δp₃</strong>. Současně platí <strong>Fₖₐₚ = F</strong>. V reálu to trvá jen zlomky milisekundy.';
+    } else if (phase === 'releasing') {
+      status.innerHTML = 'Píst se vrací. Zvýšený tlak v kapalině postupně mizí.';
+    }
+  }
+
+  function update(dt,now){
+    const ease = 1 - Math.exp(-dt*.009);
+    pistonDepth += (targetDepth - pistonDepth) * ease;
+
+    if(phase === 'pressing' && now-phaseStart > 420){
+      phase = 'wave';
+      phaseStart = now;
+      waveProgress = -0.12;
+      setStatusText();
+    }
+
+    if(phase === 'wave'){
+      const duration = 2200;
+      waveProgress = -0.12 + (now-phaseStart)/duration*1.28;
+      pressureLevel = Math.min(.999, Math.max(0,(waveProgress+.05)/1.05));
+      if(waveProgress >= 1.16){
+        phase = 'equalized';
+        phaseStart = now;
+        pressureLevel = 1;
+        setStatusText();
+      }
+    }
+
+    if(phase === 'releasing'){
+      pressureLevel += (0-pressureLevel)*ease;
+      if(now-phaseStart > 850){
+        phase='idle';
+        pressureLevel=0;
+        setStatusText();
+      }
+    }
+  }
+
+  function drawBackground(){
+    ctx.clearRect(0,0,W,H);
+  }
+
+  function render(now){
+    const dt = Math.min(40, now - lastTime);
+    lastTime = now;
+    if(running) update(dt,now);
+
+    if (now - lastUiUpdate > 80) {
+      updateLiveText();
+      lastUiUpdate = now;
+    }
+
+    drawBackground();
+    drawConnectors();
+    drawLiquid();
+    drawParticles(now);
+    drawWalls();
+    drawPiston();
+    drawLabels();
+
+    requestAnimationFrame(render);
+  }
+
+  function push(){
+    if(phase==='pressing' || phase==='wave') return;
+    targetDepth = Math.max(16, Math.min(54, 14 + force*0.22));
+    phase='pressing';
+    phaseStart=performance.now();
+    pressureLevel=0;
+    waveProgress=-0.15;
+    setStatusText();
+  }
+
+  function reset(){
+    targetDepth=0;
+    phase='releasing';
+    phaseStart=performance.now();
+    setStatusText();
+  }
+
+  pushBtn.addEventListener('click', push);
+  resetBtn.addEventListener('click', reset);
+
+  pauseBtn.addEventListener('click', () => {
+    running = !running;
+    pauseBtn.textContent = running ? 'Pozastavit' : 'Pokračovat';
+    if(running) lastTime = performance.now();
+  });
+
+  forceSlider.addEventListener('input', () => {
+    force = Number(forceSlider.value);
+    updateLiveText();
+    if(phase==='equalized'){
+      targetDepth = Math.max(16, Math.min(54, 14 + force*0.22));
+    }
+  });
+
+  areaSlider.addEventListener('input', () => {
+    areaCm2 = Number(areaSlider.value);
+    resize();
+    updateLiveText();
+  });
+
+  canvas.addEventListener('pointerdown', push);
+  window.addEventListener('resize', resize);
+
+  resize();
+  updateLiveText();
+  setStatusText();
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
